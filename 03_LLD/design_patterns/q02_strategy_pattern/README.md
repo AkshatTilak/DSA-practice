@@ -1,0 +1,2 @@
+# Strategy Pattern
+Behavioral encapsulation.

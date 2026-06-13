@@ -31,23 +31,34 @@ def initialize_challenge(module_key, topic_key, challenge_key):
     
     # Define Target Directory
     topic_dir = os.path.join(module_key, topic_key)
-    os.makedirs(topic_dir, exist_ok=True)
+    challenge_dir = os.path.join(topic_dir, challenge_key)
+    os.makedirs(challenge_dir, exist_ok=True)
     
     # 1. Create __init__.py markers to declare packages (resolving pytest import mismatches)
     with open(os.path.join(module_key, "__init__.py"), "w") as f:
         f.write("# Package marker\n")
     with open(os.path.join(topic_dir, "__init__.py"), "w") as f:
         f.write("# Package marker\n")
+    with open(os.path.join(challenge_dir, "__init__.py"), "w") as f:
+        f.write("# Package marker\n")
         
     # 2. Topic Concept README
     readme_path = os.path.join(topic_dir, "README.md")
     if not os.path.exists(readme_path):
         readme_title = topic_key.replace("_", " ").title()
-        default_readme = challenge_info.get("readme_content")
-        if not default_readme:
-            default_readme = f"# {readme_title}\n\nConcept card for {readme_title}.\n\n### 🏢 Real-World Application\nHigh scalability configurations."
+        default_readme = f"# {readme_title}\n\nConcept card for {readme_title}.\n\n### 🏢 Real-World Application\nHigh scalability configurations."
         with open(readme_path, "w", encoding="utf-8") as f:
             f.write(default_readme)
+            
+    # 3. Challenge-specific README
+    challenge_readme_path = os.path.join(challenge_dir, "README.md")
+    if not os.path.exists(challenge_readme_path):
+        challenge_readme = challenge_info.get("readme_content")
+        if not challenge_readme:
+            title = challenge_key.split("_", 1)[1].replace("_", " ").title() if "_" in challenge_key else challenge_key.title()
+            challenge_readme = f"# {title}\n\n{challenge_info.get('description', '')}"
+        with open(challenge_readme_path, "w", encoding="utf-8") as f:
+            f.write(challenge_readme)
             
     # File Paths
     file_type = challenge_info.get("type", "code") if "type" in challenge_info else ("design" if challenge_key.endswith(".md") else "code")
@@ -57,8 +68,8 @@ def initialize_challenge(module_key, topic_key, challenge_key):
         code_filename = f"{challenge_key}.py"
         test_filename = f"{challenge_key}_test.py"
         
-        code_path = os.path.join(topic_dir, code_filename)
-        test_path = os.path.join(topic_dir, test_filename)
+        code_path = os.path.join(challenge_dir, code_filename)
+        test_path = os.path.join(challenge_dir, test_filename)
         
         # Parse names
         func_name = extract_function_name(challenge_info.get("starter_code"))
@@ -115,8 +126,8 @@ if sys.path[0] == dir_path:
         design_filename = f"{challenge_key}.md"
         sol_filename = f"{challenge_key}_solution.md"
         
-        design_path = os.path.join(topic_dir, design_filename)
-        sol_path = os.path.join(topic_dir, sol_filename)
+        design_path = os.path.join(challenge_dir, design_filename)
+        sol_path = os.path.join(challenge_dir, sol_filename)
         
         if not os.path.exists(design_path):
             desc = challenge_info.get("description", "Design this system.")
