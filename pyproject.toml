@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "interview-prep-vault"
+version = "0.1.0"
+description = "A comprehensive monolithic learning repository and dashboard for DSA, ML, LLD, and HLD prep."
+authors = ["Developer"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.11"
+streamlit = "^1.35.0"
+pytest = "^8.0.0"
+black = "^24.0.0"
+google-generativeai = "^0.5.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
