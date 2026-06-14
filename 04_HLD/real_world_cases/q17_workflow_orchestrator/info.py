@@ -3,7 +3,7 @@ INFO = {
     'type': 'design',
     'description': 'Design Workflow Orchestrator (Airflow style).',
     'groups': ['Real-World Systems', 'Data Pipelines'],
-    'readme_content': """# Workflow Orchestrator HLD
+    'readme_content': r"""# Workflow Orchestrator HLD
 
 A **Workflow Orchestrator** (similar to Apache Airflow, Temporal, or Prefect) is a distributed system designed to author, schedule, and monitor complex sequences of tasks. These tasks are typically represented as a **Directed Acyclic Graph (DAG)**, where nodes represent units of work and edges represent dependencies.
 
@@ -130,7 +130,7 @@ In a workflow orchestrator, **Consistency (C)** is prioritized over **Availabili
 | **Scheduling Loop** | $O(N_{active\_tasks})$ | $O(1)$ | Proportional to the number of tasks being evaluated. |
 | **Task State Update** | $O(1)$ | $O(1)$ | Simple indexed primary key update in SQL. |
 | **Dependency Lookup** | $O(1)$ | $O(1)$ | Optimized via indexed foreign keys in the DB. |""",
-    'solutions': """# System Design Document: Distributed Workflow Orchestrator
+    'solutions': r"""# System Design Document: Distributed Workflow Orchestrator
 
 ## 1. Requirements & System Constraints
 

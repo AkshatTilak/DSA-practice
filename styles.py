@@ -303,31 +303,5 @@ textarea {
     letter-spacing: 0.05em;
 }
 
-/* Floating Action Button (FAB) styles for AI Coach Overlay */
-.floating-container {
-    position: fixed;
-    bottom: 30px;
-    right: 30px;
-    z-index: 99999;
-}
-
-.floating-container button {
-    background: linear-gradient(135deg, #4F46E5 0%, #818CF8 100%) !important;
-    color: white !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    border-radius: 30px !important;
-    padding: 12px 24px !important;
-    box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4) !important;
-    font-weight: 600 !important;
-    font-size: 0.95rem !important;
-    cursor: pointer !important;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
-
-.floating-container button:hover {
-    transform: translateY(-4px) scale(1.05) !important;
-    box-shadow: 0 8px 25px rgba(79, 70, 229, 0.6) !important;
-    border-color: rgba(255, 255, 255, 0.3) !important;
-}
 </style>
 """

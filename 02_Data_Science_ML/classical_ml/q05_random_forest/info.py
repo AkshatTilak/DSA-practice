@@ -3,7 +3,7 @@ INFO = {
     'link': 'https://www.geeksforgeeks.org/data-science-interview-questions-and-answers/',
     'description': 'Ensemble bagging trees.',
     'groups': ['Classical ML', 'Ensemble Methods'],
-    'readme_content': """# Random Forest (Ensemble Bagging Trees)
+    'readme_content': r"""# Random Forest (Ensemble Bagging Trees)
 
 ## 🗂️ Concept Card: Random Forest
 **Random Forest** is a powerful ensemble learning method used for both **classification** and **regression**. It operates by constructing a multitude of decision trees during training and outputting the class that is the mode of the classes (classification) or mean prediction (regression) of the individual trees.
@@ -118,7 +118,7 @@ Random Forests are "workhorse" models in industry because they require very litt
     - **Recommendation Baselines:** Acting as a baseline model to predict if a user will click a product.
 4.  **Bioinformatics:**
     - **Gene Classification:** Determining the function of a gene based on its expression patterns across different conditions.""",
-    'solutions': """# --- APPROACH 1: Naive (Brute Force) ---
+    'solutions': r"""# --- APPROACH 1: Naive (Brute Force) ---
 # Time Complexity: O(T * N * F * log N)
 # Space Complexity: O(T * N)
 # This approach implements a Bagging Classifier. It bootstraps the data and trains multiple Decision Trees, 

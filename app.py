@@ -1,6 +1,20 @@
 import streamlit as st
 import os
 import sys
+
+# Load API key from .env file at startup
+if os.path.exists(".env"):
+    with open(".env", "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, val = line.split("=", 1)
+                key = key.strip()
+                val = val.strip().strip("'\"")
+                if key in ("API_KEY", "GEMINI_API_KEY"):
+                    os.environ["GEMINI_API_KEY"] = val
+                    os.environ["API_KEY"] = val
+
 import importlib
 import questions_db
 from questions_db import CHALLENGES_DB
@@ -16,7 +30,7 @@ from helpers import (
 )
 from dashboard_view import render_dashboard
 from sandbox_view import render_sandbox
-from ai_coach_view import render_ai_coach_button
+from ai_coach_view import render_ai_coach_panel
 
 # ─────────────────────────────────────────────────
 # PAGE CONFIG & STYLING
@@ -36,6 +50,8 @@ st.markdown(CSS_STYLING, unsafe_allow_html=True)
 # ─────────────────────────────────────────────────
 if "view_mode" not in st.session_state:
     st.session_state.view_mode = "Explore Dashboard"
+if "show_ai_coach" not in st.session_state:
+    st.session_state.show_ai_coach = False
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 if "last_challenge" not in st.session_state:
@@ -220,36 +236,65 @@ st.sidebar.markdown("<h3 style='color:#F8FAFC; font-size:1.0rem; margin-bottom:5
 api_key = st.sidebar.text_input("Gemini API Key", type="password", value=os.environ.get("GEMINI_API_KEY", ""))
 if api_key:
     os.environ["GEMINI_API_KEY"] = api_key
+st.session_state.api_key = api_key
 
-model_options = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"]
-selected_model = st.sidebar.selectbox("Gemini Model", options=model_options, index=0)
+MODEL_NAMES = {
+    "gemma-4-31b-it": "Gemma 4 31B",
+    "gemma-4-26b-a4b-it": "Gemma 4 26B MoE",
+    "gemini-2.5-flash": "Gemini 2.5 Flash",
+    "gemini-2.0-flash": "Gemini 2.0 Flash",
+    "gemini-1.5-flash": "Gemini 1.5 Flash",
+    "gemini-1.5-pro": "Gemini 1.5 Pro",
+    "gemini-pro": "Gemini 1.0 Pro"
+}
+
+selected_model = st.sidebar.selectbox(
+    "Gemini / Gemma Model",
+    options=list(MODEL_NAMES.keys()),
+    index=0,
+    format_func=lambda x: MODEL_NAMES[x]
+)
+st.session_state.selected_model = selected_model
 
 # ─────────────────────────────────────────────────
 # VIEW RENDERING
 # ─────────────────────────────────────────────────
-if st.session_state.view_mode == "Explore Dashboard":
-    render_dashboard(initialized_map, all_group_data, total_challenges)
-else:
-    challenge_info = CHALLENGES_DB[st.session_state.selected_module][st.session_state.selected_topic][st.session_state.selected_challenge]
-    render_sandbox(
-        st.session_state.selected_module,
-        st.session_state.selected_topic,
-        st.session_state.selected_challenge,
-        challenge_info,
-        is_challenge_active
-    )
+challenge_info = CHALLENGES_DB[st.session_state.selected_module][st.session_state.selected_topic][st.session_state.selected_challenge]
 
-# ─────────────────────────────────────────────────
-# AI COACH OVERLAY POPUP
-# ─────────────────────────────────────────────────
-if st.session_state.view_mode == "Practice Sandbox":
-    challenge_info = CHALLENGES_DB[st.session_state.selected_module][st.session_state.selected_topic][st.session_state.selected_challenge]
-    render_ai_coach_button(
-        st.session_state.selected_module,
-        st.session_state.selected_topic,
-        st.session_state.selected_challenge,
-        challenge_info,
-        is_challenge_active,
-        api_key,
-        selected_model
-    )
+if st.session_state.get("show_ai_coach", False):
+    col_main, col_chat = st.columns([7.2, 2.8])
+    with col_main:
+        if st.session_state.view_mode == "Explore Dashboard":
+            render_dashboard(initialized_map, all_group_data, total_challenges)
+        else:
+            render_sandbox(
+                st.session_state.selected_module,
+                st.session_state.selected_topic,
+                st.session_state.selected_challenge,
+                challenge_info,
+                is_challenge_active
+            )
+    with col_chat:
+        render_ai_coach_panel(
+            st.session_state.selected_module,
+            st.session_state.selected_topic,
+            st.session_state.selected_challenge,
+            challenge_info if st.session_state.view_mode == "Practice Sandbox" else None,
+            is_challenge_active if st.session_state.view_mode == "Practice Sandbox" else False,
+            api_key,
+            selected_model,
+            current_view=st.session_state.view_mode
+        )
+else:
+    if st.session_state.view_mode == "Explore Dashboard":
+        render_dashboard(initialized_map, all_group_data, total_challenges)
+    else:
+        render_sandbox(
+            st.session_state.selected_module,
+            st.session_state.selected_topic,
+            st.session_state.selected_challenge,
+            challenge_info,
+            is_challenge_active
+        )
+
+

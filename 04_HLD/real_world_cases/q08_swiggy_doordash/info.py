@@ -3,7 +3,7 @@ INFO = {
     'type': 'design',
     'description': 'Design Swiggy / DoorDash - Food delivery logistics.',
     'groups': ['Real-World Systems', 'Distributed Systems'],
-    'readme_content': """# Swiggy / DoorDash HLD: Food Delivery Logistics
+    'readme_content': r"""# Swiggy / DoorDash HLD: Food Delivery Logistics
 
 This study guide provides a professional, high-level design for a large-scale food delivery platform like Swiggy or DoorDash. This system is fundamentally a **three-sided marketplace** involving **Customers**, **Restaurants**, and **Delivery Partners**, requiring complex real-time orchestration and geospatial indexing.
 
@@ -133,7 +133,7 @@ To avoid polling the server every second (which would crash the DB), the system 
 | **Driver Location Update** | $O(1)$ | $O(D)$ | Redis Key-Value write. |
 | **Finding Nearby Drivers** | $O(K)$ | $O(K)$ | $K$ = Drivers in current + neighboring H3 cells. |
 | **Order State Transition** | $O(1)$ | $O(1)$ | ACID transaction in SQL. |""",
-    'solutions': """# System Design: Food Delivery Logistics (Swiggy / DoorDash)
+    'solutions': r"""# System Design: Food Delivery Logistics (Swiggy / DoorDash)
 
 ## 1. Requirements & System Constraints
 

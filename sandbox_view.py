@@ -35,19 +35,23 @@ def render_sandbox(
         gm = get_group_meta(g)
         group_pills += f"<span style='background:{gm['color']}20; color:{gm['color']}; padding:3px 8px; border-radius:4px; font-size:0.75rem; margin-right:4px;'>{gm['emoji']} {g}</span>"
     
-    # Header card
-    st.markdown(f"""
-    <div style='background: linear-gradient(135deg, #0F131E, #1E1B4B20); border: 1px solid #1E293B; padding: 18px 22px; border-radius: 10px; margin-bottom: 20px;'>
-        <div style='display: flex; justify-content: space-between; align-items: center;'>
+    # Header card with columns to support Ask Coach button on top
+    col_sh1, col_sh2 = st.columns([7.8, 2.2])
+    with col_sh1:
+        st.markdown(f"""
+        <div style='background: linear-gradient(135deg, #0F131E, #1E1B4B20); border: 1px solid #1E293B; padding: 18px 22px; border-radius: 10px; margin-bottom: 20px;'>
             <h3 style='margin: 0; color: #F8FAFC;'>{clean_name(selected_challenge_key)}</h3>
-            <div>{badge_html}</div>
+            <p style='color: #64748B; font-size: 0.9rem; margin: 8px 0 0 0;'>
+                Module: <strong>{module_display_names.get(selected_module_key, selected_module_key)}</strong> | Topic: <strong>{clean_name(selected_topic_key)}</strong>
+            </p>
+            <div style='margin-top: 8px;'>{group_pills}</div>
         </div>
-        <p style='color: #64748B; font-size: 0.9rem; margin: 8px 0 0 0;'>
-            Module: <strong>{module_display_names.get(selected_module_key, selected_module_key)}</strong> | Topic: <strong>{clean_name(selected_topic_key)}</strong>
-        </p>
-        <div style='margin-top: 8px;'>{group_pills}</div>
-    </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
+    with col_sh2:
+        st.markdown(f"<div style='text-align: right; margin-bottom: 12px;'>{badge_html}</div>", unsafe_allow_html=True)
+        if st.button("💬 Ask AI Study Coach", key="ask_coach_sandbox_header", use_container_width=True, type="primary"):
+            st.session_state.show_ai_coach = not st.session_state.get("show_ai_coach", False)
+            st.rerun()
 
     if not is_challenge_active:
         st.markdown(f"""

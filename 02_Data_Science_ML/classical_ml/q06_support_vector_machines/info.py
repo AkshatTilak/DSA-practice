@@ -3,7 +3,7 @@ INFO = {
     'link': 'https://www.geeksforgeeks.org/data-science-interview-questions-and-answers/',
     'description': 'Hyperplane margins.',
     'groups': ['Classical ML', 'Optimization'],
-    'readme_content': """# Support Vector Machines: Hyperplane Margins
+    'readme_content': r"""# Support Vector Machines: Hyperplane Margins
 
 ## 📌 Overview & Concept Card
 
@@ -136,7 +136,7 @@ def solve_optimal(X, y):
     accuracy = model.score(X_test, y_test)
     return accuracy, model.support_vectors_
 ```""",
-    'solutions': """# --- APPROACH 1: Naive (Brute Force) ---
+    'solutions': r"""# --- APPROACH 1: Naive (Brute Force) ---
 # Time Complexity: O(N * D)
 # Space Complexity: O(1)
 # This approach iterates through each data point and calculates the geometric margin individually 

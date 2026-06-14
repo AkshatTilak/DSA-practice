@@ -3,7 +3,7 @@ INFO = {
     'type': 'design',
     'description': 'Design WhatsApp / Messenger - Chat + E2E encryption.',
     'groups': ['Real-World Systems', 'Messaging'],
-    'readme_content': """# WhatsApp HLD: Real-Time Messaging with End-to-End Encryption
+    'readme_content': r"""# WhatsApp HLD: Real-Time Messaging with End-to-End Encryption
 
 This study guide provides a professional, staff-level architectural deep dive into designing a global-scale messaging system like WhatsApp. The focus is on achieving massive concurrency, low latency, and uncompromising security through End-to-End Encryption (E2EE).
 
@@ -131,7 +131,7 @@ In a global messaging app, **Availability (A)** and **Partition Tolerance (P)** 
 `Client` $\xrightarrow{WebSocket}$ `Chat Gateway` $\leftrightarrow$ `Message Service` $\rightarrow$ `Cassandra`
 $\quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \downarrow$
 $\quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad$ `Push Notification (FCM/APNs)` $\to$ `Offline Client`""",
-    'solutions': """# System Design Document: WhatsApp / Messenger (Real-time Chat with E2EE)
+    'solutions': r"""# System Design Document: WhatsApp / Messenger (Real-time Chat with E2EE)
 
 ## 1. Requirements & System Constraints
 

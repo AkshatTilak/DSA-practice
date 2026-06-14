@@ -4,7 +4,7 @@ INFO = {
     'description': 'Static content edge validation.',
     'type': 'design',
     'groups': ['Networking', 'Distributed Systems'],
-    'readme_content': """# Content Delivery Network (CDN) Distributions HLD
+    'readme_content': r"""# Content Delivery Network (CDN) Distributions HLD
 
 A **Content Delivery Network (CDN)** is a geographically distributed network of proxy servers and their data centers. The primary objective is to provide high availability and performance by distributing static content (images, videos, JS, CSS) closer to the end-users, thereby reducing latency and offloading traffic from the origin server.
 
@@ -149,7 +149,7 @@ class EdgeCache:
         self.storage[url] = {"content": content, "etag": etag, "expiry": expiry}
         return content, 200
 ```""",
-    'solutions': """# System Design Document: Static Content Edge Validation
+    'solutions': r"""# System Design Document: Static Content Edge Validation
 
 ## 1. Requirements & System Constraints
 

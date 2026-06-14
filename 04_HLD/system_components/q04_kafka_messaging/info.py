@@ -4,7 +4,7 @@ INFO = {
     'description': 'Topic partition consumer lags.',
     'type': 'design',
     'groups': ['Messaging', 'Distributed Systems'],
-    'readme_content': """# Kafka Messaging System Design: Managing Consumer Lag
+    'readme_content': r"""# Kafka Messaging System Design: Managing Consumer Lag
 
 ## 1. Overview & System Requirements
 
@@ -306,5 +306,5 @@ The monitoring system prioritizes **Availability (A)** and **Partition Tolerance
 ### 6.3 Polling vs. Pushing
 *   **Polling (Current Design):** Using `AdminClient` to poll offsets is simpler and puts less load on the broker.
 *   **Pushing (Alternative):** Consumers could push their offsets to the TSDB every $X$ messages.
-    *   *Trade-off:* Pushing increases the load on the consumer application and the TSDB, and if the consumer crashes, the last "push" may be missing, leading to inaccurate lag metrics. Polling the broker is the "Source of Truth."""",
+    *   *Trade-off:* Pushing increases the load on the consumer application and the TSDB, and if the consumer crashes, the last "push" may be missing, leading to inaccurate lag metrics. Polling the broker is the "Source of Truth."""
 }

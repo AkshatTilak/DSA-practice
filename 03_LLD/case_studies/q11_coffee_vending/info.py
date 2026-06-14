@@ -3,7 +3,7 @@ INFO = {
     'type': 'design',
     'description': 'Design Coffee Vending Machine.',
     'groups': ['OOP Case Studies', 'Behavioral Patterns'],
-    'readme_content': """# Coffee Vending Machine LLD
+    'readme_content': r"""# Coffee Vending Machine LLD
 
 This study guide provides a professional low-level design (LLD) for a **Coffee Vending Machine**. The goal is to create a system that is modular, extensible (easy to add new coffee types), and robust (handles ingredient shortages and state transitions).
 
@@ -401,5 +401,5 @@ To prevent "Double Dispensing" or race conditions:
 
 ### 6.3 CAP Theorem Priority
 - **Priority**: **Consistency (C) and Partition Tolerance (P)**.
-- **Reasoning**: In a vending machine, Availability (A) of the *Cloud* is secondary to Consistency. We cannot risk charging a customer for a drink that doesn't exist (Inventory inconsistency) or failing to record a payment. If the cloud is partitioned, the machine switches to a "Limited Offline Mode."""",
+- **Reasoning**: In a vending machine, Availability (A) of the *Cloud* is secondary to Consistency. We cannot risk charging a customer for a drink that doesn't exist (Inventory inconsistency) or failing to record a payment. If the cloud is partitioned, the machine switches to a "Limited Offline Mode."""
 }
