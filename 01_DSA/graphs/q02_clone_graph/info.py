@@ -3,5 +3,304 @@ INFO = {
     'link': 'https://leetcode.com/problems/clone-graph/',
     'description': 'Clone deep copy graph.',
     'groups': ['Graph', 'Hashing'],
-    'readme_content': '# Clone Graph\n\n## 📌 Overview & Problem Explanation\n\nThe **Clone Graph** challenge asks us to create a **deep copy** of a connected undirected graph. \n\n### What is a Deep Copy?\nIn software engineering, a **shallow copy** merely copies the reference to an object, meaning both the original and the copy point to the same memory address. A **deep copy**, however, creates entirely new instances of every object in the structure. If you modify a node in a deep copy, the original graph remains untouched.\n\n### The Challenge\nWe are given a reference to a single node in a graph. This node has a value and a list of its neighbors. Because graphs can contain **cycles** (e.g., Node A $\\rightarrow$ Node B $\\rightarrow$ Node A), a naive recursive approach would lead to an infinite loop. We must ensure that each node is instantiated exactly once and that all original edges are replicated in the new graph.\n\n### Input & Output\n- **Input**: A reference to a `Node` object.\n- **Output**: A reference to the root of the newly cloned graph.\n- **Constraints**:\n    - The number of nodes is between $0$ and $100$.\n    - Node values are unique.\n    - The graph is connected.\n\n### Edge Cases\n- **Empty Graph**: If the input node is `None`, the output should be `None`.\n- **Single Node**: A graph with one node and no edges.\n- **Self-Loops**: A node that has an edge pointing to itself.\n- **Cyclic Graphs**: Multiple paths leading back to the same node.\n\n---\n\n## ⚙️ Core Concepts & Data Structures\n\nTo solve this problem optimally, we rely on two primary pillars: **Graph Traversal** and **Hashing**.\n\n### 1. Hashing (The Mapping Registry)\nThe most critical component is a **Hash Map** (Python `dict`). We use this map to store the relationship:\n`Original Node` $\\rightarrow$ `Cloned Node`\n\n**Why a Hash Map?**\n- **Avoids Redundancy**: Before creating a new node, we check if it already exists in the map.\n- **Prevents Infinite Loops**: When we encounter a neighbor that has already been cloned, we simply retrieve the reference from the map instead of initiating a new recursive call.\n\n### 2. Traversal Algorithms\nWe can traverse the graph using either **Depth-First Search (DFS)** or **Breadth-First Search (BFS)**.\n\n- **DFS (Recursive)**: Naturally handles the "deep" exploration of paths. It is often more concise to implement.\n- **BFS (Iterative)**: Uses a queue to process nodes level-by-level. It is often preferred in systems where recursion depth might hit a limit (though not an issue with $N=100$).\n\n---\n\n## 🚀 Step-by-Step Logic\n\n### Approach 1: Depth-First Search (DFS) - Optimal\nThis approach uses recursion to visit every node and its neighbors.\n\n1. **Base Case**: If the current node is `None`, return `None`.\n2. **Check Registry**: If the current node is already in our `visited` hash map, return the cloned version from the map.\n3. **Clone Node**: Create a new node instance with the same value as the original.\n4. **Register**: Store the mapping `original_node: cloned_node` in the hash map immediately.\n5. **Recursive Step**: Iterate through the `neighbors` of the original node. For each neighbor, recursively call the DFS function and append the returned cloned neighbor to the cloned node\'s neighbor list.\n6. **Return**: Return the cloned node.\n\n### Approach 2: Breadth-First Search (BFS) - Optimal\nThis approach uses a queue to clone the graph iteratively.\n\n1. **Initialization**: Create a `visited` hash map and a `queue`.\n2. **Start Node**: Clone the start node, add it to the map, and push the original start node into the queue.\n3. **Processing**: While the queue is not empty:\n    - Pop the `current_node`.\n    - For each `neighbor` of the `current_node`:\n        - **If neighbor not cloned**: Create the clone, add it to the map, and push the original neighbor into the queue.\n        - **Edge Linkage**: Add the cloned neighbor (retrieved from the map) to the `neighbors` list of the cloned `current_node`.\n4. **Return**: Return the cloned version of the start node.\n\n### Dry Run Example\n**Graph**: `1 - 2`, `2 - 3`, `3 - 1` (A triangle cycle)\n1. Start at `Node 1`. Map: `{1: 1\'}`. Queue: `[1]`.\n2. Pop `1`. Neighbors are `2` and `3`.\n3. Clone `2`. Map: `{1: 1\', 2: 2\'}`. Queue: `[2]`. Link `1\' -> 2\'`.\n4. Clone `3`. Map: `{1: 1\', 2: 2\', 3: 3\'}`. Queue: `[2, 3]`. Link `1\' -> 3\'`.\n5. Pop `2`. Neighbors are `1` and `3`. \n   - `1` is in map $\\rightarrow$ Link `2\' -> 1\'`.\n   - `3` is in map $\\rightarrow$ Link `2\' -> 3\'`.\n6. Pop `3`. Neighbors are `1` and `2`.\n   - `1` is in map $\\rightarrow$ Link `3\' -> 1\'`.\n   - `2` is in map $\\rightarrow$ Link `3\' -> 2\'`.\n7. Queue empty. Return `1\'`.\n\n---\n\n## 💻 Implementation\n\n```python\nclass Node:\n    def __init__(self, val = 0, neighbors = None):\n        self.val = val\n        self.neighbors = neighbors if neighbors is not None else []\n\ndef solve_dfs(node):\n    """\n    Optimal Solution using Depth First Search.\n    """\n    if not node:\n        return None\n    \n    # Map to keep track of already cloned nodes\n    visited = {}\n\n    def clone(node):\n        # If the node was already cloned, return the clone\n        if node in visited:\n            return visited[node]\n        \n        # Create the clone\n        clone_node = Node(node.val)\n        # Map original to clone BEFORE recursing to handle cycles\n        visited[node] = clone_node\n        \n        # Recursively clone neighbors\n        for neighbor in node.neighbors:\n            clone_node.neighbors.append(clone(neighbor))\n            \n        return clone_node\n\n    return clone(node)\n\ndef solve_bfs(node):\n    """\n    Optimal Solution using Breadth First Search.\n    """\n    if not node:\n        return None\n    \n    visited = {node: Node(node.val)}\n    queue = [node]\n    \n    while queue:\n        curr = queue.pop(0)\n        \n        for neighbor in curr.neighbors:\n            if neighbor not in visited:\n                # Clone and add to map\n                visited[neighbor] = Node(neighbor.val)\n                # Add original to queue for further exploration\n                queue.append(neighbor)\n            \n            # Link the cloned current node to the cloned neighbor\n            visited[curr].neighbors.append(visited[neighbor])\n            \n    return visited[node]\n```\n\n---\n\n## 📊 Complexity Analysis\n\n| Approach | Time Complexity | Space Complexity | Reasoning |\n| :--- | :--- | :--- | :--- |\n| **DFS** | $O(V + E)$ | $O(V)$ | We visit every vertex once and every edge once. Space is used by the hash map and recursion stack. |\n| **BFS** | $O(V + E)$ | $O(V)$ | We visit every vertex once and every edge once. Space is used by the hash map and the queue. |\n\n- **$V$**: Number of vertices (nodes).\n- **$E$**: Number of edges.\n\n---\n\n## 🌍 Real-World Applications\n\nThe pattern of "Deep Cloning" a graph is prevalent in several high-level software engineering scenarios:\n\n1. **Undo/Redo Mechanisms**: In complex software (like Figma or Photoshop), the state of the document is often represented as a graph of objects. To implement a "Snapshot" or "Undo" feature, the system may deep-clone the current state graph to preserve it before applying changes.\n2. **Game State Serialization**: In game development, cloning a game world or a specific set of interconnected entities (e.g., a squad of NPCs with shared references) is necessary for creating save points or simulating "what-if" scenarios in AI.\n3. **Compiler Design**: Abstract Syntax Trees (ASTs) are essentially graphs. Compilers often need to clone parts of an AST to perform optimizations or transformations without destroying the original source representation.\n4. **Dependency Injection Containers**: When creating isolated scopes for different requests in a web server, the container may clone a graph of service dependencies to ensure that one request\'s state does not leak into another.',
+    'readme_content': """# Clone Graph
+
+## 📌 Overview & Problem Explanation
+
+The **Clone Graph** challenge asks us to create a **deep copy** of a connected undirected graph. 
+
+### What is a Deep Copy?
+In software engineering, a **shallow copy** merely copies the reference to an object, meaning both the original and the copy point to the same memory address. A **deep copy**, however, creates entirely new instances of every object in the structure. If you modify a node in a deep copy, the original graph remains untouched.
+
+### The Challenge
+We are given a reference to a single node in a graph. This node has a value and a list of its neighbors. Because graphs can contain **cycles** (e.g., Node A $\rightarrow$ Node B $\rightarrow$ Node A), a naive recursive approach would lead to an infinite loop. We must ensure that each node is instantiated exactly once and that all original edges are replicated in the new graph.
+
+### Input & Output
+- **Input**: A reference to a `Node` object.
+- **Output**: A reference to the root of the newly cloned graph.
+- **Constraints**:
+    - The number of nodes is between $0$ and $100$.
+    - Node values are unique.
+    - The graph is connected.
+
+### Edge Cases
+- **Empty Graph**: If the input node is `None`, the output should be `None`.
+- **Single Node**: A graph with one node and no edges.
+- **Self-Loops**: A node that has an edge pointing to itself.
+- **Cyclic Graphs**: Multiple paths leading back to the same node.
+
+---
+
+## ⚙️ Core Concepts & Data Structures
+
+To solve this problem optimally, we rely on two primary pillars: **Graph Traversal** and **Hashing**.
+
+### 1. Hashing (The Mapping Registry)
+The most critical component is a **Hash Map** (Python `dict`). We use this map to store the relationship:
+`Original Node` $\rightarrow$ `Cloned Node`
+
+**Why a Hash Map?**
+- **Avoids Redundancy**: Before creating a new node, we check if it already exists in the map.
+- **Prevents Infinite Loops**: When we encounter a neighbor that has already been cloned, we simply retrieve the reference from the map instead of initiating a new recursive call.
+
+### 2. Traversal Algorithms
+We can traverse the graph using either **Depth-First Search (DFS)** or **Breadth-First Search (BFS)**.
+
+- **DFS (Recursive)**: Naturally handles the "deep" exploration of paths. It is often more concise to implement.
+- **BFS (Iterative)**: Uses a queue to process nodes level-by-level. It is often preferred in systems where recursion depth might hit a limit (though not an issue with $N=100$).
+
+---
+
+## 🚀 Step-by-Step Logic
+
+### Approach 1: Depth-First Search (DFS) - Optimal
+This approach uses recursion to visit every node and its neighbors.
+
+1. **Base Case**: If the current node is `None`, return `None`.
+2. **Check Registry**: If the current node is already in our `visited` hash map, return the cloned version from the map.
+3. **Clone Node**: Create a new node instance with the same value as the original.
+4. **Register**: Store the mapping `original_node: cloned_node` in the hash map immediately.
+5. **Recursive Step**: Iterate through the `neighbors` of the original node. For each neighbor, recursively call the DFS function and append the returned cloned neighbor to the cloned node's neighbor list.
+6. **Return**: Return the cloned node.
+
+### Approach 2: Breadth-First Search (BFS) - Optimal
+This approach uses a queue to clone the graph iteratively.
+
+1. **Initialization**: Create a `visited` hash map and a `queue`.
+2. **Start Node**: Clone the start node, add it to the map, and push the original start node into the queue.
+3. **Processing**: While the queue is not empty:
+    - Pop the `current_node`.
+    - For each `neighbor` of the `current_node`:
+        - **If neighbor not cloned**: Create the clone, add it to the map, and push the original neighbor into the queue.
+        - **Edge Linkage**: Add the cloned neighbor (retrieved from the map) to the `neighbors` list of the cloned `current_node`.
+4. **Return**: Return the cloned version of the start node.
+
+### Dry Run Example
+**Graph**: `1 - 2`, `2 - 3`, `3 - 1` (A triangle cycle)
+1. Start at `Node 1`. Map: `{1: 1'}`. Queue: `[1]`.
+2. Pop `1`. Neighbors are `2` and `3`.
+3. Clone `2`. Map: `{1: 1', 2: 2'}`. Queue: `[2]`. Link `1' -> 2'`.
+4. Clone `3`. Map: `{1: 1', 2: 2', 3: 3'}`. Queue: `[2, 3]`. Link `1' -> 3'`.
+5. Pop `2`. Neighbors are `1` and `3`. 
+   - `1` is in map $\rightarrow$ Link `2' -> 1'`.
+   - `3` is in map $\rightarrow$ Link `2' -> 3'`.
+6. Pop `3`. Neighbors are `1` and `2`.
+   - `1` is in map $\rightarrow$ Link `3' -> 1'`.
+   - `2` is in map $\rightarrow$ Link `3' -> 2'`.
+7. Queue empty. Return `1'`.
+
+---
+
+## 💻 Implementation
+
+```python
+class Node:
+    def __init__(self, val = 0, neighbors = None):
+        self.val = val
+        self.neighbors = neighbors if neighbors is not None else []
+
+def solve_dfs(node):
+    \"\"\"
+    Optimal Solution using Depth First Search.
+    \"\"\"
+    if not node:
+        return None
+    
+    # Map to keep track of already cloned nodes
+    visited = {}
+
+    def clone(node):
+        # If the node was already cloned, return the clone
+        if node in visited:
+            return visited[node]
+        
+        # Create the clone
+        clone_node = Node(node.val)
+        # Map original to clone BEFORE recursing to handle cycles
+        visited[node] = clone_node
+        
+        # Recursively clone neighbors
+        for neighbor in node.neighbors:
+            clone_node.neighbors.append(clone(neighbor))
+            
+        return clone_node
+
+    return clone(node)
+
+def solve_bfs(node):
+    \"\"\"
+    Optimal Solution using Breadth First Search.
+    \"\"\"
+    if not node:
+        return None
+    
+    visited = {node: Node(node.val)}
+    queue = [node]
+    
+    while queue:
+        curr = queue.pop(0)
+        
+        for neighbor in curr.neighbors:
+            if neighbor not in visited:
+                # Clone and add to map
+                visited[neighbor] = Node(neighbor.val)
+                # Add original to queue for further exploration
+                queue.append(neighbor)
+            
+            # Link the cloned current node to the cloned neighbor
+            visited[curr].neighbors.append(visited[neighbor])
+            
+    return visited[node]
+```
+
+---
+
+## 📊 Complexity Analysis
+
+| Approach | Time Complexity | Space Complexity | Reasoning |
+| :--- | :--- | :--- | :--- |
+| **DFS** | $O(V + E)$ | $O(V)$ | We visit every vertex once and every edge once. Space is used by the hash map and recursion stack. |
+| **BFS** | $O(V + E)$ | $O(V)$ | We visit every vertex once and every edge once. Space is used by the hash map and the queue. |
+
+- **$V$**: Number of vertices (nodes).
+- **$E$**: Number of edges.
+
+---
+
+## 🌍 Real-World Applications
+
+The pattern of "Deep Cloning" a graph is prevalent in several high-level software engineering scenarios:
+
+1. **Undo/Redo Mechanisms**: In complex software (like Figma or Photoshop), the state of the document is often represented as a graph of objects. To implement a "Snapshot" or "Undo" feature, the system may deep-clone the current state graph to preserve it before applying changes.
+2. **Game State Serialization**: In game development, cloning a game world or a specific set of interconnected entities (e.g., a squad of NPCs with shared references) is necessary for creating save points or simulating "what-if" scenarios in AI.
+3. **Compiler Design**: Abstract Syntax Trees (ASTs) are essentially graphs. Compilers often need to clone parts of an AST to perform optimizations or transformations without destroying the original source representation.
+4. **Dependency Injection Containers**: When creating isolated scopes for different requests in a web server, the container may clone a graph of service dependencies to ensure that one request's state does not leak into another.""",
+    'solutions': """# --- APPROACH 1: Naive (Brute Force) ---
+# Time Complexity: O(V + E)
+# Space Complexity: O(V)
+# This approach uses a recursive Depth First Search (DFS). 
+# We maintain a dictionary to map original nodes to their corresponding cloned nodes. 
+# If a node has already been cloned, we return the clone; otherwise, we create it 
+# and recursively clone its neighbors.
+
+class Node:
+    def __init__(self, val = 0, neighbors = None):
+        self.val = val
+        self.neighbors = neighbors if neighbors is not None else []
+
+def solve_naive(node: 'Node') -> 'Node':
+    if not node:
+        return None
+    
+    visited = {}
+
+    def dfs(curr_node):
+        # If the node was already cloned, return the clone from the map
+        if curr_node in visited:
+            return visited[curr_node]
+        
+        # Create a new node as a clone
+        clone = Node(curr_node.val)
+        visited[curr_node] = clone
+        
+        # Recursively clone all neighbors
+        for neighbor in curr_node.neighbors:
+            clone.neighbors.append(dfs(neighbor))
+            
+        return clone
+
+    return dfs(node)
+
+# --- APPROACH 2: Optimal (Iterative BFS) ---
+# Time Complexity: O(V + E)
+# Space Complexity: O(V)
+# This approach uses Breadth First Search (BFS) with a queue. 
+# It is optimal because it visits every node and edge exactly once. 
+# Unlike the recursive DFS, the iterative BFS avoids potential StackOverflow errors 
+# for extremely deep graphs (though rare for most competitive programming constraints).
+# The dictionary ensures that each node is instantiated exactly once.
+
+from collections import deque
+
+def solve_optimal(node: 'Node') -> 'Node':
+    if not node:
+        return None
+    
+    # Mapping from original node to cloned node
+    visited = {node: Node(node.val)}
+    queue = deque([node])
+    
+    while queue:
+        curr = queue.popleft()
+        
+        for neighbor in curr.neighbors:
+            # If the neighbor hasn't been cloned yet
+            if neighbor not in visited:
+                # Create clone and add to mapping
+                visited[neighbor] = Node(neighbor.val)
+                # Add to queue to process its neighbors later
+                queue.append(neighbor)
+            
+            # Link the clone of the current node to the clone of the neighbor
+            visited[curr].neighbors.append(visited[neighbor])
+            
+    return visited[node]
+
+# --- APPROACH 3: Secondary Language (Java Variant) ---
+\"\"\"
+package graphs;
+
+import java.util.*;
+
+class Node {
+    public int val;
+    public List<Node> neighbors;
+    public Node() {
+        val = 0;
+        neighbors = new ArrayList<Node>();
+    }
+    public Node(int _val) {
+        val = _val;
+        neighbors = new ArrayList<Node>();
+    }
+    public Node(int _val, ArrayList<Node> _neighbors) {
+        val = _val;
+        neighbors = _neighbors;
+    }
+}
+
+public class CloneGraph {
+    public Node cloneGraph(Node node) {
+        if (node == null) {
+            return null;
+        }
+
+        // Map to keep track of original node -> cloned node
+        Map<Node, Node> visited = new HashMap<>();
+        
+        // Use a queue for BFS traversal
+        Queue<Node> queue = new LinkedList<>();
+        
+        // Initialize the clone for the start node
+        visited.put(node, new Node(node.val));
+        queue.add(node);
+        
+        while (!queue.isEmpty()) {
+            Node curr = queue.poll();
+            
+            for (Node neighbor : curr.neighbors) {
+                if (!visited.containsKey(neighbor)) {
+                    // Clone the neighbor if not visited
+                    visited.put(neighbor, new Node(neighbor.val));
+                    queue.add(neighbor);
+                }
+                // Add the cloned neighbor to the current cloned node's neighbors list
+                visited.get(curr).neighbors.add(visited.get(neighbor));
+            }
+        }
+        
+        return visited.get(node);
+    }
+}
+\"\"\"""",
 }

@@ -3,8 +3,301 @@ INFO = {
     'link': 'https://leetcode.com/problems/search-a-2d-matrix/',
     'description': 'Search target in 2D sorted matrix.',
     'groups': ['Array', 'Binary Search', 'Matrix'],
-    'starter_code': 'def search_matrix(matrix: list[list[int]], target: int) -> bool:\n    pass',
-    'solutions': '# Optimal: Logarithmic virtual 1D array search',
-    'test_code': 'def test_matrix():\n    assert search_matrix([[1,3,5,7],[10,11,16,20]], 3) is True',
-    'readme_content': '# Search A 2D Matrix (q02_search_a_2d_matrix)\n\n## 📖 Overview & Problem Explanation\n\nThis challenge asks us to efficiently determine if a given `target` integer exists within an `m x n` 2D matrix. The matrix has two key properties that are crucial for optimization:\n\n1.  **Row-wise Sorted**: Integers in each row are sorted in non-decreasing order from left to right.\n2.  **Inter-row Sorted**: The first integer of each row is greater than the last integer of the previous row.\n\nThese properties imply that if we were to flatten the entire 2D matrix into a 1D array, that 1D array would also be perfectly sorted in non-decreasing order. This observation is the cornerstone for optimal solutions.\n\n**Inputs**:\n*   `matrix`: A list of lists of integers representing the `m x n` 2D matrix.\n    *   `m` (number of rows) and `n` (number of columns) are at least 1.\n    *   `matrix[i][j]` values range from -10^4 to 10^4.\n*   `target`: An integer to search for, ranging from -10^4 to 10^4.\n\n**Output**:\n*   `bool`: `True` if the `target` is found in the matrix, `False` otherwise.\n\n**Constraints**:\n*   `m == matrix.length`\n*   `n == matrix[i].length`\n*   `1 <= m, n <= 100`\n*   `-10^4 <= matrix[i][j], target <= 10^4`\n\n**Edge Cases**:\n*   **Empty Matrix**: The constraints specify `m, n >= 1`, so an entirely empty matrix (0x0) is not possible. However, if `m=1, n=1`, it\'s a single element matrix.\n*   **Target out of range**: If the target is smaller than the smallest element (`matrix[0][0]`) or larger than the largest element (`matrix[m-1][n-1]`), it cannot be present.\n\n**Example**:\n\n```\nInput: matrix = [[1,3,5,7],[10,11,16,20],[23,30,34,60]], target = 3\nOutput: true\n\nInput: matrix = [[1,3,5,7],[10,11,16,20],[23,30,34,60]], target = 13\nOutput: false\n```\n\n## 🧠 Core Concepts & Data Structures/Algorithms\n\nThe problem\'s primary hints are the "sorted" properties of the matrix. Whenever we encounter sorted data, **Binary Search** immediately comes to mind as an efficient search algorithm.\n\n### Binary Search (Logarithmic Search)\n*   **Concept**: Binary search is an algorithm that finds the position of a target value within a sorted array. It repeatedly divides the search interval in half. If the value of the search key is less than the item in the middle of the interval, the algorithm narrows the interval to the lower half. Otherwise, it narrows it to the upper half.\n*   **Why it\'s chosen**: The sorted nature of the rows and the inter-row relationship allow us to leverage binary search, reducing the search space exponentially with each step, leading to a much faster solution than linear scanning.\n*   **Properties**:\n    *   Requires the data to be sorted.\n    *   Time complexity: O(log N) where N is the number of elements.\n    *   Space complexity: O(1) (iterative) or O(log N) (recursive due to call stack).\n\n### Treating a 2D Matrix as a Virtual 1D Array\nThis is the most crucial insight for the optimal solution. Given the two sorting properties:\n1.  Each row is sorted: `matrix[i][0] <= matrix[i][1] <= ... <= matrix[i][n-1]`\n2.  Rows are sorted relative to each other: `matrix[i][0] > matrix[i-1][n-1]`\n\nThese two conditions together guarantee that if you concatenate all rows, the resulting 1D array will also be perfectly sorted.\n\nFor an `m x n` matrix:\n*   The total number of elements is `M = m * n`.\n*   We can conceptually map a 1D index `k` (from `0` to `M-1`) to its corresponding 2D coordinates `(row, col)`:\n    *   `row = k // n` (integer division gives the row index)\n    *   `col = k % n` (modulo gives the column index)\n\nThis mapping allows us to perform a single binary search over the entire conceptual 1D sorted array, efficiently finding the target\'s potential location.\n\n## 👣 Step-by-Step Logic\n\nWe\'ll explore a couple of approaches, moving from a brute-force idea to the optimal solution.\n\n### Approach 1: Brute Force (Linear Scan)\nA straightforward, though inefficient, approach is to simply iterate through every element of the matrix and check if it equals the target.\n\n1.  Iterate through each row `r` from `0` to `m-1`.\n2.  Within each row `r`, iterate through each column `c` from `0` to `n-1`.\n3.  If `matrix[r][c] == target`, return `True`.\n4.  If the loops complete without finding the target, return `False`.\n\n*This approach does not leverage the sorted properties and will be slow for large matrices.*\n\n### Approach 2: Two Binary Searches (Better)\nThis approach leverages the sorted properties by performing two separate binary searches: one to find the correct row, and another to find the target within that row.\n\n1.  **Binary Search for the Row**:\n    *   The goal is to find the row `r_idx` such that `matrix[r_idx][0] <= target` and (if `r_idx < m-1`) `matrix[r_idx + 1][0] > target`. This means the `target` can only be in `matrix[r_idx]`.\n    *   Initialize `row_low = 0` and `row_high = m - 1`.\n    *   While `row_low <= row_high`:\n        *   Calculate `mid_row = row_low + (row_high - row_low) // 2`.\n        *   If `matrix[mid_row][0] == target`, we found it, return `True`.\n        *   If `matrix[mid_row][0] < target`: The target could be in this row or a later row. So, we try to go right, `row_low = mid_row + 1`.\n        *   If `matrix[mid_row][0] > target`: The target must be in an earlier row (or not present). So, we go left, `row_high = mid_row - 1`.\n    *   After the loop, `row_high` will point to the index of the row that potentially contains the target (or -1 if `target` is smaller than `matrix[0][0]`).\n    *   If `row_high < 0`, the target is smaller than the smallest element in the matrix, so return `False`.\n\n2.  **Binary Search within the Found Row**:\n    *   Perform a standard binary search on `matrix[row_high]` for the `target`.\n    *   Initialize `col_low = 0` and `col_high = n - 1`.\n    *   While `col_low <= col_high`:\n        *   Calculate `mid_col = col_low + (col_high - col_low) // 2`.\n        *   If `matrix[row_high][mid_col] == target`, return `True`.\n        *   If `matrix[row_high][mid_col] < target`, `col_low = mid_col + 1`.\n        *   If `matrix[row_high][mid_col] > target`, `col_high = mid_col - 1`.\n    *   If the inner loop finishes without finding the target, return `False`.\n\n### Approach 3: Single Binary Search on Virtual 1D Array (Optimal)\n\nThis is the most elegant and common optimal solution. It treats the `m x n` matrix as a single sorted array of `m * n` elements and applies binary search directly.\n\n1.  Get the dimensions: `m = len(matrix)` and `n = len(matrix[0])`.\n2.  Define the search space for the virtual 1D array:\n    *   `low = 0` (index of the first element in the virtual array)\n    *   `high = (m * n) - 1` (index of the last element in the virtual array)\n3.  Perform binary search:\n    *   While `low <= high`:\n        *   Calculate `mid = low + (high - low) // 2`. This is the 1D index.\n        *   **Map `mid` to 2D coordinates**:\n            *   `row = mid // n`\n            *   `col = mid % n`\n        *   **Compare `matrix[row][col]` with `target`**:\n            *   If `matrix[row][col] == target`, we found it. Return `True`.\n            *   If `matrix[row][col] < target`, the target must be in the right half of the virtual array. Update `low = mid + 1`.\n            *   If `matrix[row][col] > target`, the target must be in the left half of the virtual array. Update `high = mid - 1`.\n4.  If the loop finishes (meaning `low > high`), the target was not found. Return `False`.\n\n#### Dry Run Example (Optimal Approach)\n\nLet\'s trace `matrix = [[1, 3, 5], [10, 11, 13]], target = 11`\n\n*   `m = 2`, `n = 3`\n*   `low = 0`, `high = (2 * 3) - 1 = 5`\n\n**Iteration 1:**\n*   `mid = 0 + (5 - 0) // 2 = 2`\n*   `row = 2 // 3 = 0`\n*   `col = 2 % 3 = 2`\n*   `matrix[0][2] = 5`\n*   `5 < target (11)`, so `low = mid + 1 = 3`\n\n**Iteration 2:**\n*   `low = 3`, `high = 5`\n*   `mid = 3 + (5 - 3) // 2 = 4`\n*   `row = 4 // 3 = 1`\n*   `col = 4 % 3 = 1`\n*   `matrix[1][1] = 11`\n*   `11 == target (11)`, so return `True`.\n\nTarget found!\n\n## ⏱️ Complexity Analysis\n\n| Approach                       | Time Complexity       | Space Complexity |\n| :----------------------------- | :-------------------- | :--------------- |\n| **Brute Force (Linear Scan)**  | O(M*N)                | O(1)             |\n| **Two Binary Searches**        | O(log M + log N)      | O(1)             |\n| **Single Binary Search (Optimal)** | O(log (M*N))          | O(1)             |\n\n**Explanation**:\n\n*   **Brute Force**: In the worst case, we might visit every element in the matrix. An `m x n` matrix has `m * n` elements.\n*   **Two Binary Searches**:\n    *   Finding the correct row takes `O(log M)` time because we are binary searching through `M` rows (specifically, the first elements of `M` rows).\n    *   Searching within that row takes `O(log N)` time because we are binary searching through `N` columns.\n    *   Total time: `O(log M + log N)`.\n*   **Single Binary Search (Optimal)**:\n    *   We are performing a single binary search over a conceptual 1D array of `M * N` elements.\n    *   Each step divides the search space in half. Therefore, the time complexity is `O(log (M*N))`.\n    *   **Note**: `log (M*N)` is mathematically equivalent to `log M + log N`. So, both optimal approaches have the same asymptotic time complexity. The single binary search might have slightly better constant factors in practice as it avoids nested function calls or separate loop structures.\n*   **Space Complexity**: All approaches use a constant amount of extra space for variables (pointers, loop counters), making them `O(1)`.\n\n## 🌐 Real-World Applications\n\nThe pattern of searching in a sorted 2D structure, or conceptually flattening it for efficient search, is quite common:\n\n1.  **Database Indexing**: Many databases use multi-dimensional indexes (like B-trees or k-d trees) where data is sorted across multiple dimensions. Efficiently querying such data often involves logic similar to searching a 2D sorted matrix.\n2.  **Geospatial Data**: In mapping applications or geographical information systems (GIS), data points (e.g., locations, sensor readings) might be stored in a grid-like structure, sorted by latitude and longitude. Searching for specific data points within a bounding box or near a coordinate can utilize these principles.\n3.  **Configuration Tables/Lookup Tables**: Systems that rely on large lookup tables (e.g., tax rates based on income and deductions, pricing tiers based on quantity and customer type) might store this data in a sorted matrix format. Efficiently finding the correct value requires rapid lookups.\n4.  **Game Development**: Pathfinding algorithms or collision detection in grid-based games can sometimes leverage sorted grid properties for faster lookups of terrain types or object positions.\n5.  **Search Engines (Simplified)**: While real search engines are far more complex, the fundamental idea of quickly narrowing down results within vast, indexed (and thus sorted) datasets is at their core. Imagine searching a sorted index where keywords are rows and document IDs are columns.',
+    'starter_code': """def search_matrix(matrix: list[list[int]], target: int) -> bool:
+    pass""",
+    'solutions': """# --- APPROACH 1: Naive (Brute Force) ---`
+    *   `# Time Complexity: O(m * n)`
+    *   `# Space Complexity: O(1)`
+    *   `def search_matrix_naive(matrix: list[list[int]], target: int) -> bool:`
+    *   `# --- APPROACH 2: Optimal (Binary Search) ---`
+    *   `# Time Complexity: O(log(m * n))`
+    *   `# Space Complexity: O(1)`
+    *   `def search_matrix_optimal(matrix: list[list[int]], target: int) -> bool:`
+    *   `# --- APPROACH 3: Secondary Language (Java Variant) ---`
+    *   `\"\"\" ... \"\"\"`
+
+    *   Wait, does "Search target in 2D sorted matrix" mean LeetCode 74 (fully sorted) or LeetCode 240 (rows sorted, cols sorted)?
+    *   The starter code name `search_matrix` and the prompt `binary_search` usually imply the fully sorted one (LeetCode 74), as that's the classic binary search application for 2D. If it were LeetCode 240, it's usually called `search_matrix_ii` and uses a "Staircase Search" $O(m+n)$. Given the topic `binary_search`, I will implement the $O(\log(m \times n))$ version.
+
+    *   Naive: $O(m \times n)$.
+    *   Optimal: $O(\log(m \times n))$.
+    *   Java: Matching logic.# --- APPROACH 1: Naive (Brute Force) ---
+# Time Complexity: O(m * n)
+# Space Complexity: O(1)
+# This approach iterates through every element of the 2D matrix sequentially to check if the target exists.
+def search_matrix_naive(matrix: list[list[int]], target: int) -> bool:
+    if not matrix or not matrix[0]:
+        return False
+    
+    rows = len(matrix)
+    cols = len(matrix[0])
+    
+    for r in range(rows):
+        for c in range(cols):
+            if matrix[r][c] == target:
+                return True
+    return False
+
+# --- APPROACH 2: Optimal (Binary Search) ---
+# Time Complexity: O(log(m * n))
+# Space Complexity: O(1)
+# Since the matrix is sorted such that the first integer of each row is greater than the last integer of the previous row, 
+# the entire matrix can be treated as a single sorted 1D array. We map the 1D index 'mid' back to 2D coordinates 
+# using row = mid // cols and col = mid % cols. This is optimal because it leverages the full sorting property 
+# of the matrix to achieve logarithmic time complexity.
+def search_matrix_optimal(matrix: list[list[int]], target: int) -> bool:
+    if not matrix or not matrix[0]:
+        return False
+    
+    rows = len(matrix)
+    cols = len(matrix[0])
+    
+    low = 0
+    high = (rows * cols) - 1
+    
+    while low <= high:
+        mid = (low + high) // 2
+        # Map 1D index to 2D coordinates
+        mid_val = matrix[mid // cols][mid % cols]
+        
+        if mid_val == target:
+            return True
+        elif mid_val < target:
+            low = mid + 1
+        else:
+            high = mid - 1
+            
+    return False
+
+# --- APPROACH 3: Secondary Language (Java Variant) ---
+\"\"\"
+package binary_search;
+
+public class SearchA2dMatrix {
+    /**
+     * Searches for a target value in a 2D sorted matrix.
+     * Time Complexity: O(log(m * n))
+     * Space Complexity: O(1)
+     */
+    public boolean searchMatrix(int[][] matrix, int target) {
+        if (matrix == null || matrix.length == 0 || matrix[0].length == 0) {
+            return false;
+        }
+        
+        int rows = matrix.length;
+        int cols = matrix[0].length;
+        
+        int low = 0;
+        int high = (rows * cols) - 1;
+        
+        while (low <= high) {
+            int mid = low + (high - low) / 2;
+            // Coordinate mapping: 1D index to 2D [row][col]
+            int midVal = matrix[mid / cols][mid % cols];
+            
+            if (midVal == target) {
+                return true;
+            } else if (midVal < target) {
+                low = mid + 1;
+            } else {
+                high = mid - 1;
+            }
+        }
+        
+        return false;
+    }
+
+    public static void main(String[] args) {
+        SearchA2dMatrix solution = new SearchA2dMatrix();
+        int[][] matrix = {
+            {1, 3, 5, 7},
+            {10, 11, 16, 20},
+            {23, 30, 34, 60}
+        };
+        System.out.println(solution.searchMatrix(matrix, 3));  // Output: true
+        System.out.println(solution.searchMatrix(matrix, 13)); // Output: false
+    }
+}
+\"\"\"""",
+    'test_code': """def test_matrix():
+    assert search_matrix([[1,3,5,7],[10,11,16,20]], 3) is True""",
+    'readme_content': """# Search A 2D Matrix (q02_search_a_2d_matrix)
+
+## 📖 Overview & Problem Explanation
+
+This challenge asks us to efficiently determine if a given `target` integer exists within an `m x n` 2D matrix. The matrix has two key properties that are crucial for optimization:
+
+1.  **Row-wise Sorted**: Integers in each row are sorted in non-decreasing order from left to right.
+2.  **Inter-row Sorted**: The first integer of each row is greater than the last integer of the previous row.
+
+These properties imply that if we were to flatten the entire 2D matrix into a 1D array, that 1D array would also be perfectly sorted in non-decreasing order. This observation is the cornerstone for optimal solutions.
+
+**Inputs**:
+*   `matrix`: A list of lists of integers representing the `m x n` 2D matrix.
+    *   `m` (number of rows) and `n` (number of columns) are at least 1.
+    *   `matrix[i][j]` values range from -10^4 to 10^4.
+*   `target`: An integer to search for, ranging from -10^4 to 10^4.
+
+**Output**:
+*   `bool`: `True` if the `target` is found in the matrix, `False` otherwise.
+
+**Constraints**:
+*   `m == matrix.length`
+*   `n == matrix[i].length`
+*   `1 <= m, n <= 100`
+*   `-10^4 <= matrix[i][j], target <= 10^4`
+
+**Edge Cases**:
+*   **Empty Matrix**: The constraints specify `m, n >= 1`, so an entirely empty matrix (0x0) is not possible. However, if `m=1, n=1`, it's a single element matrix.
+*   **Target out of range**: If the target is smaller than the smallest element (`matrix[0][0]`) or larger than the largest element (`matrix[m-1][n-1]`), it cannot be present.
+
+**Example**:
+
+```
+Input: matrix = [[1,3,5,7],[10,11,16,20],[23,30,34,60]], target = 3
+Output: true
+
+Input: matrix = [[1,3,5,7],[10,11,16,20],[23,30,34,60]], target = 13
+Output: false
+```
+
+## 🧠 Core Concepts & Data Structures/Algorithms
+
+The problem's primary hints are the "sorted" properties of the matrix. Whenever we encounter sorted data, **Binary Search** immediately comes to mind as an efficient search algorithm.
+
+### Binary Search (Logarithmic Search)
+*   **Concept**: Binary search is an algorithm that finds the position of a target value within a sorted array. It repeatedly divides the search interval in half. If the value of the search key is less than the item in the middle of the interval, the algorithm narrows the interval to the lower half. Otherwise, it narrows it to the upper half.
+*   **Why it's chosen**: The sorted nature of the rows and the inter-row relationship allow us to leverage binary search, reducing the search space exponentially with each step, leading to a much faster solution than linear scanning.
+*   **Properties**:
+    *   Requires the data to be sorted.
+    *   Time complexity: O(log N) where N is the number of elements.
+    *   Space complexity: O(1) (iterative) or O(log N) (recursive due to call stack).
+
+### Treating a 2D Matrix as a Virtual 1D Array
+This is the most crucial insight for the optimal solution. Given the two sorting properties:
+1.  Each row is sorted: `matrix[i][0] <= matrix[i][1] <= ... <= matrix[i][n-1]`
+2.  Rows are sorted relative to each other: `matrix[i][0] > matrix[i-1][n-1]`
+
+These two conditions together guarantee that if you concatenate all rows, the resulting 1D array will also be perfectly sorted.
+
+For an `m x n` matrix:
+*   The total number of elements is `M = m * n`.
+*   We can conceptually map a 1D index `k` (from `0` to `M-1`) to its corresponding 2D coordinates `(row, col)`:
+    *   `row = k // n` (integer division gives the row index)
+    *   `col = k % n` (modulo gives the column index)
+
+This mapping allows us to perform a single binary search over the entire conceptual 1D sorted array, efficiently finding the target's potential location.
+
+## 👣 Step-by-Step Logic
+
+We'll explore a couple of approaches, moving from a brute-force idea to the optimal solution.
+
+### Approach 1: Brute Force (Linear Scan)
+A straightforward, though inefficient, approach is to simply iterate through every element of the matrix and check if it equals the target.
+
+1.  Iterate through each row `r` from `0` to `m-1`.
+2.  Within each row `r`, iterate through each column `c` from `0` to `n-1`.
+3.  If `matrix[r][c] == target`, return `True`.
+4.  If the loops complete without finding the target, return `False`.
+
+*This approach does not leverage the sorted properties and will be slow for large matrices.*
+
+### Approach 2: Two Binary Searches (Better)
+This approach leverages the sorted properties by performing two separate binary searches: one to find the correct row, and another to find the target within that row.
+
+1.  **Binary Search for the Row**:
+    *   The goal is to find the row `r_idx` such that `matrix[r_idx][0] <= target` and (if `r_idx < m-1`) `matrix[r_idx + 1][0] > target`. This means the `target` can only be in `matrix[r_idx]`.
+    *   Initialize `row_low = 0` and `row_high = m - 1`.
+    *   While `row_low <= row_high`:
+        *   Calculate `mid_row = row_low + (row_high - row_low) // 2`.
+        *   If `matrix[mid_row][0] == target`, we found it, return `True`.
+        *   If `matrix[mid_row][0] < target`: The target could be in this row or a later row. So, we try to go right, `row_low = mid_row + 1`.
+        *   If `matrix[mid_row][0] > target`: The target must be in an earlier row (or not present). So, we go left, `row_high = mid_row - 1`.
+    *   After the loop, `row_high` will point to the index of the row that potentially contains the target (or -1 if `target` is smaller than `matrix[0][0]`).
+    *   If `row_high < 0`, the target is smaller than the smallest element in the matrix, so return `False`.
+
+2.  **Binary Search within the Found Row**:
+    *   Perform a standard binary search on `matrix[row_high]` for the `target`.
+    *   Initialize `col_low = 0` and `col_high = n - 1`.
+    *   While `col_low <= col_high`:
+        *   Calculate `mid_col = col_low + (col_high - col_low) // 2`.
+        *   If `matrix[row_high][mid_col] == target`, return `True`.
+        *   If `matrix[row_high][mid_col] < target`, `col_low = mid_col + 1`.
+        *   If `matrix[row_high][mid_col] > target`, `col_high = mid_col - 1`.
+    *   If the inner loop finishes without finding the target, return `False`.
+
+### Approach 3: Single Binary Search on Virtual 1D Array (Optimal)
+
+This is the most elegant and common optimal solution. It treats the `m x n` matrix as a single sorted array of `m * n` elements and applies binary search directly.
+
+1.  Get the dimensions: `m = len(matrix)` and `n = len(matrix[0])`.
+2.  Define the search space for the virtual 1D array:
+    *   `low = 0` (index of the first element in the virtual array)
+    *   `high = (m * n) - 1` (index of the last element in the virtual array)
+3.  Perform binary search:
+    *   While `low <= high`:
+        *   Calculate `mid = low + (high - low) // 2`. This is the 1D index.
+        *   **Map `mid` to 2D coordinates**:
+            *   `row = mid // n`
+            *   `col = mid % n`
+        *   **Compare `matrix[row][col]` with `target`**:
+            *   If `matrix[row][col] == target`, we found it. Return `True`.
+            *   If `matrix[row][col] < target`, the target must be in the right half of the virtual array. Update `low = mid + 1`.
+            *   If `matrix[row][col] > target`, the target must be in the left half of the virtual array. Update `high = mid - 1`.
+4.  If the loop finishes (meaning `low > high`), the target was not found. Return `False`.
+
+#### Dry Run Example (Optimal Approach)
+
+Let's trace `matrix = [[1, 3, 5], [10, 11, 13]], target = 11`
+
+*   `m = 2`, `n = 3`
+*   `low = 0`, `high = (2 * 3) - 1 = 5`
+
+**Iteration 1:**
+*   `mid = 0 + (5 - 0) // 2 = 2`
+*   `row = 2 // 3 = 0`
+*   `col = 2 % 3 = 2`
+*   `matrix[0][2] = 5`
+*   `5 < target (11)`, so `low = mid + 1 = 3`
+
+**Iteration 2:**
+*   `low = 3`, `high = 5`
+*   `mid = 3 + (5 - 3) // 2 = 4`
+*   `row = 4 // 3 = 1`
+*   `col = 4 % 3 = 1`
+*   `matrix[1][1] = 11`
+*   `11 == target (11)`, so return `True`.
+
+Target found!
+
+## ⏱️ Complexity Analysis
+
+| Approach                       | Time Complexity       | Space Complexity |
+| :----------------------------- | :-------------------- | :--------------- |
+| **Brute Force (Linear Scan)**  | O(M*N)                | O(1)             |
+| **Two Binary Searches**        | O(log M + log N)      | O(1)             |
+| **Single Binary Search (Optimal)** | O(log (M*N))          | O(1)             |
+
+**Explanation**:
+
+*   **Brute Force**: In the worst case, we might visit every element in the matrix. An `m x n` matrix has `m * n` elements.
+*   **Two Binary Searches**:
+    *   Finding the correct row takes `O(log M)` time because we are binary searching through `M` rows (specifically, the first elements of `M` rows).
+    *   Searching within that row takes `O(log N)` time because we are binary searching through `N` columns.
+    *   Total time: `O(log M + log N)`.
+*   **Single Binary Search (Optimal)**:
+    *   We are performing a single binary search over a conceptual 1D array of `M * N` elements.
+    *   Each step divides the search space in half. Therefore, the time complexity is `O(log (M*N))`.
+    *   **Note**: `log (M*N)` is mathematically equivalent to `log M + log N`. So, both optimal approaches have the same asymptotic time complexity. The single binary search might have slightly better constant factors in practice as it avoids nested function calls or separate loop structures.
+*   **Space Complexity**: All approaches use a constant amount of extra space for variables (pointers, loop counters), making them `O(1)`.
+
+## 🌐 Real-World Applications
+
+The pattern of searching in a sorted 2D structure, or conceptually flattening it for efficient search, is quite common:
+
+1.  **Database Indexing**: Many databases use multi-dimensional indexes (like B-trees or k-d trees) where data is sorted across multiple dimensions. Efficiently querying such data often involves logic similar to searching a 2D sorted matrix.
+2.  **Geospatial Data**: In mapping applications or geographical information systems (GIS), data points (e.g., locations, sensor readings) might be stored in a grid-like structure, sorted by latitude and longitude. Searching for specific data points within a bounding box or near a coordinate can utilize these principles.
+3.  **Configuration Tables/Lookup Tables**: Systems that rely on large lookup tables (e.g., tax rates based on income and deductions, pricing tiers based on quantity and customer type) might store this data in a sorted matrix format. Efficiently finding the correct value requires rapid lookups.
+4.  **Game Development**: Pathfinding algorithms or collision detection in grid-based games can sometimes leverage sorted grid properties for faster lookups of terrain types or object positions.
+5.  **Search Engines (Simplified)**: While real search engines are far more complex, the fundamental idea of quickly narrowing down results within vast, indexed (and thus sorted) datasets is at their core. Imagine searching a sorted index where keywords are rows and document IDs are columns.""",
 }

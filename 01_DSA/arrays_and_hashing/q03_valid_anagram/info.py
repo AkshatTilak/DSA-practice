@@ -3,8 +3,205 @@ INFO = {
     'link': 'https://leetcode.com/problems/valid-anagram/',
     'description': 'Given two strings `s` and `t`, return `true` if `t` is an anagram of `s`, and `false` otherwise.',
     'groups': ['String', 'Hashing'],
-    'starter_code': 'def is_anagram(s: str, t: str) -> bool:\n    pass',
-    'solutions': '# Optimal: count dictionary O(N)',
-    'test_code': "def test_anagram():\n    assert is_anagram('anagram', 'nagaram') is True",
-    'readme_content': '# Valid Anagram (q03_valid_anagram)\n\n## Overview & Problem Explanation\n\nThe "Valid Anagram" challenge asks you to determine if two given strings, `s` and `t`, are anagrams of each other. An **anagram** is a word or phrase formed by rearranging the letters of a different word or phrase, using all the original letters exactly once. Essentially, two strings are anagrams if they contain the exact same characters with the exact same frequencies, but possibly in a different order.\n\nFor example:\n*   `s = "anagram"`, `t = "nagaram"` → Output: `true` (Both strings contain three \'a\'s, one \'n\', one \'g\', one \'r\', and one \'m\').\n*   `s = "rat"`, `t = "car"` → Output: `false` (The characters do not match).\n\n### Inputs\n*   Two strings: `s` and `t`.\n\n### Outputs\n*   A boolean value: `true` if `t` is an anagram of `s`, `false` otherwise.\n\n### Constraints\n*   `1 <= s.length, t.length <= 5 * 10^4`\n*   `s` and `t` consist of lowercase English letters (e.g., \'a\' through \'z\').\n\n### Edge Cases\n*   **Different Lengths:** If `s` and `t` have different lengths, they cannot be anagrams. This is the quickest check to perform.\n*   **Empty Strings:** Two empty strings are considered anagrams of each other.\n*   **Identical Strings:** If `s` and `t` are identical, they are also anagrams.\n\n## Core Concepts & Data Structures/Algorithms\n\nThis problem primarily leverages the idea of **character frequency counting**. The most optimal approach involves using a **hash map (or a frequency array)**.\n\n### Hash Map / Frequency Array\nA **hash map** (also known as a dictionary or hash table) is a data structure that maps keys to values. It\'s incredibly efficient for storing and retrieving data based on a key. In this problem, characters will be our keys, and their counts (frequencies) will be our values.\n\n**Why it\'s chosen:**\n*   **Efficient Counting:** Hash maps allow for `O(1)` average-time complexity for insertion, deletion, and lookup operations. This makes counting character frequencies very fast.\n*   **Fixed Character Set:** Since the problem specifies that strings consist only of lowercase English letters, we know there are only 26 possible characters. This fixed and small character set allows us to use an array of size 26 instead of a general-purpose hash map. Each index `0` to `25` can correspond to a letter (`\'a\'` to `\'z\'`). This array acts as a highly optimized frequency map.\n*   **Optimal Time Complexity:** By using a frequency map, we can solve the problem by iterating through each string once, leading to a linear time complexity solution.\n\n### Alternative: Sorting\nAnother approach involves sorting both strings and then comparing them. If two strings are anagrams, their sorted versions will be identical. While conceptually simple, this method is generally less efficient than frequency counting for typical string lengths due to the time complexity of sorting.\n\n## Step-by-Step Logic\n\nWe\'ll explore two main approaches: a brute-force approach using sorting and the optimal approach using a frequency map/array.\n\n### 1. Naive/Brute-Force Solution: Sorting and Comparison\n\nThe intuition here is straightforward: if two strings are anagrams, then rearranging their letters will result in the same sequence of characters when sorted alphabetically.\n\n**Logic:**\n1.  **Check Lengths:** First, compare the lengths of `s` and `t`. If `len(s) != len(t)`, they cannot be anagrams, so return `false`.\n2.  **Sort Strings:** Convert both strings into character arrays (or lists), sort these arrays, and then convert them back into strings.\n3.  **Compare Sorted Strings:** Compare the two sorted strings. If they are identical, return `true`; otherwise, return `false`.\n\n**Example Dry Run: `s = "listen"`, `t = "silent"`**\n\n1.  `len(s)` (6) == `len(t)` (6). Proceed.\n2.  Sort `s`: `"listen"` becomes `[\'e\', \'i\', \'l\', \'n\', \'s\', \'t\']` → `"eilnst"`.\n3.  Sort `t`: `"silent"` becomes `[\'e\', \'i\', \'l\', \'n\', \'s\', \'t\']` → `"eilnst"`.\n4.  Compare `"eilnst"` and `"eilnst"`. They are equal. Return `true`.\n\n### 2. Optimal Solution: Count Dictionary (Frequency Array)\n\nThis approach leverages the idea that two strings are anagrams if and only if they have the same count for every character.\n\n**Logic:**\n1.  **Length Check:** As with the sorting method, immediately return `false` if `len(s) != len(t)`. This is a crucial early exit condition.\n2.  **Initialize Frequency Map/Array:** Create a frequency map (e.g., a dictionary or an array of size 26 for lowercase English letters) initialized with zeros. Let\'s call it `char_counts`.\n3.  **Process String `s`:** Iterate through each character `c` in `s`. For each character, increment its corresponding count in `char_counts`.\n    *   If using an array: `char_counts[ord(c) - ord(\'a\')] += 1`.\n4.  **Process String `t`:** Iterate through each character `c` in `t`. For each character, decrement its corresponding count in `char_counts`.\n    *   If using an array: `char_counts[ord(c) - ord(\'a\')] -= 1`.\n5.  **Verify Frequencies:** After processing both strings, iterate through `char_counts`. If all counts are zero, it means every character in `s` had a matching character in `t` (and vice-versa), so return `true`. If any count is non-zero, it means there\'s a mismatch in character frequencies, so return `false`.\n\n**Example Dry Run: `s = "anagram"`, `t = "nagaram"`**\n\n1.  `len(s)` (7) == `len(t)` (7). Proceed.\n2.  Initialize `char_counts = {\'a\': 0, \'b\': 0, ..., \'z\': 0}` (conceptually, or an array of 26 zeros).\n\n3.  **Process `s = "anagram"`:**\n    *   \'a\': `char_counts[\'a\']` becomes 1\n    *   \'n\': `char_counts[\'n\']` becomes 1\n    *   \'a\': `char_counts[\'a\']` becomes 2\n    *   \'g\': `char_counts[\'g\']` becomes 1\n    *   \'r\': `char_counts[\'r\']` becomes 1\n    *   \'a\': `char_counts[\'a\']` becomes 3\n    *   \'m\': `char_counts[\'m\']` becomes 1\n        *   `char_counts` after `s`: `{\'a\': 3, \'g\': 1, \'m\': 1, \'n\': 1, \'r\': 1, ...other_chars: 0}`\n\n4.  **Process `t = "nagaram"`:**\n    *   \'n\': `char_counts[\'n\']` becomes 0\n    *   \'a\': `char_counts[\'a\']` becomes 2\n    *   \'g\': `char_counts[\'g\']` becomes 0\n    *   \'a\': `char_counts[\'a\']` becomes 1\n    *   \'r\': `char_counts[\'r\']` becomes 0\n    *   \'a\': `char_counts[\'a\']` becomes 0\n    *   \'m\': `char_counts[\'m\']` becomes 0\n    *   `char_counts` after `t`: `{\'a\': 0, \'g\': 0, \'m\': 0, \'n\': 0, \'r\': 0, ...other_chars: 0}`\n\n5.  **Verify `char_counts`:** All values in `char_counts` are 0. Return `true`.\n\n## Complexity Analysis\n\n| Approach                       | Time Complexity | Space Complexity | Reasoning                                                                                                                                                                                                                                                                     |\n| :----------------------------- | :-------------- | :--------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |\n| **1. Sorting and Comparison**  | `O(N log N)`    | `O(N)`           | **Time:** Sorting typically takes `O(N log N)` time, where `N` is the length of the string. Since we sort two strings, it\'s `O(N log N) + O(N log N)`, which simplifies to `O(N log N)`. <br>**Space:** Depending on the sorting algorithm, `O(N)` space might be required for storing the sorted strings or during the sorting process (e.g., Timsort in Python). |\n| **2. Count Dictionary (Optimal)** | `O(N)`          | `O(1)`           | **Time:** We iterate through string `s` once (`O(N)`), and then through string `t` once (`O(N)`). Each character operation (increment/decrement) is `O(1)`. Finally, iterating through the frequency map (max 26 entries) is `O(1)`. Total: `O(N)`. <br>**Space:** We use a fixed-size array (26 integers) or a hash map that will store at most 26 unique lowercase English letters. This makes the space complexity constant, `O(1)`. |\n\n## Real-World Applications\n\nThe "Valid Anagram" problem, or the underlying techniques it demonstrates, appear in various real-world software scenarios:\n\n1.  **Search Query Normalization:** In search engines, users might type queries with characters in a different order (e.g., "iphone" vs. "phonei"). Anagram detection (or a more complex form of character/token frequency comparison) can help normalize queries to match relevant documents, improving search results.\n2.  **Text Analysis and Natural Language Processing (NLP):**\n    *   **Lexical Analysis:** Identifying words that are anagrams can be part of linguistic studies, puzzles, or word games.\n    *   **Document Comparison:** While not direct anagrams, the concept of character/word frequency is fundamental in comparing documents for similarity, plagiarism detection, or topic modeling.\n3.  **Data Validation:** In some systems, ensuring that a user-entered string is a rearrangement of an expected string (e.g., for certain codes or identifiers that are order-independent) could use this logic.\n4.  **Security and Hashing (Conceptual):** While not directly used for cryptographic hashing, the idea of checking if two pieces of data have the same "makeup" regardless of order is conceptually related to how some checksums or hash functions might operate on properties of data.\n5.  **Educational Software/Games:** Word puzzle games often involve finding anagrams.\n6.  **Compiler Design (Symbol Tables):** While not for anagrams specifically, frequency maps (hash maps) are critical components of compilers for managing symbol tables, storing variable names, and their attributes for quick lookup.',
+    'starter_code': """def is_anagram(s: str, t: str) -> bool:
+    pass""",
+    'solutions': """# --- APPROACH 1: Naive (Brute Force) ---
+# Time Complexity: O(n log n)
+# Space Complexity: O(n)
+# This approach sorts both strings and compares them. If two strings are anagrams, their sorted versions must be identical. 
+# Sorting takes O(n log n) time and O(n) space in Python due to the sorted() function creating a new list.
+def is_anagram_naive(s: str, t: str) -> bool:
+    if len(s) != len(t):
+        return False
+    return sorted(s) == sorted(t)
+
+# --- APPROACH 2: Optimal (Hash Map/Frequency Counter) ---
+# Time Complexity: O(n)
+# Space Complexity: O(k)
+# This approach uses a frequency map (dictionary) to count occurrences of each character. 
+# It is optimal because it traverses the strings only once, resulting in linear time complexity. 
+# Space complexity is O(k) where k is the number of unique characters in the alphabet (constant O(1) if limited to English letters).
+def is_anagram_optimal(s: str, t: str) -> bool:
+    if len(s) != len(t):
+        return False
+    
+    count = {}
+    
+    # Increment counts for string s
+    for char in s:
+        count[char] = count.get(char, 0) + 1
+        
+    # Decrement counts for string t
+    for char in t:
+        if char not in count:
+            return False
+        count[char] -= 1
+        if count[char] < 0:
+            return False
+            
+    return True
+
+# --- APPROACH 3: Secondary Language (Java Variant) ---
+\"\"\"
+package arrays_and_hashing;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public class ValidAnagram {
+    /**
+     * Determines if string t is an anagram of string s.
+     * This implementation uses a frequency array for optimal performance, 
+     * assuming the input consists of lowercase English letters.
+     */
+    public boolean isAnagram(String s, String t) {
+        if (s == null || t == null || s.length() != t.length()) {
+            return false;
+        }
+
+        // Using an integer array as a fixed-size hash map for lowercase 'a'-'z'
+        int[] charCounts = new int[26];
+
+        for (int i = 0; i < s.length(); i++) {
+            charCounts[s.charAt(i) - 'a']++;
+            charCounts[t.charAt(i) - 'a']--;
+        }
+
+        for (int count : charCounts) {
+            if (count != 0) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public static void main(String[] args) {
+        ValidAnagram va = new ValidAnagram();
+        System.out.println(va.isAnagram("anagram", "nagaram")); // true
+        System.out.println(va.isAnagram("rat", "car"));         // false
+    }
+}
+\"\"\"""",
+    'test_code': """def test_anagram():
+    assert is_anagram('anagram', 'nagaram') is True""",
+    'readme_content': """# Valid Anagram (q03_valid_anagram)
+
+## Overview & Problem Explanation
+
+The "Valid Anagram" challenge asks you to determine if two given strings, `s` and `t`, are anagrams of each other. An **anagram** is a word or phrase formed by rearranging the letters of a different word or phrase, using all the original letters exactly once. Essentially, two strings are anagrams if they contain the exact same characters with the exact same frequencies, but possibly in a different order.
+
+For example:
+*   `s = "anagram"`, `t = "nagaram"` → Output: `true` (Both strings contain three 'a's, one 'n', one 'g', one 'r', and one 'm').
+*   `s = "rat"`, `t = "car"` → Output: `false` (The characters do not match).
+
+### Inputs
+*   Two strings: `s` and `t`.
+
+### Outputs
+*   A boolean value: `true` if `t` is an anagram of `s`, `false` otherwise.
+
+### Constraints
+*   `1 <= s.length, t.length <= 5 * 10^4`
+*   `s` and `t` consist of lowercase English letters (e.g., 'a' through 'z').
+
+### Edge Cases
+*   **Different Lengths:** If `s` and `t` have different lengths, they cannot be anagrams. This is the quickest check to perform.
+*   **Empty Strings:** Two empty strings are considered anagrams of each other.
+*   **Identical Strings:** If `s` and `t` are identical, they are also anagrams.
+
+## Core Concepts & Data Structures/Algorithms
+
+This problem primarily leverages the idea of **character frequency counting**. The most optimal approach involves using a **hash map (or a frequency array)**.
+
+### Hash Map / Frequency Array
+A **hash map** (also known as a dictionary or hash table) is a data structure that maps keys to values. It's incredibly efficient for storing and retrieving data based on a key. In this problem, characters will be our keys, and their counts (frequencies) will be our values.
+
+**Why it's chosen:**
+*   **Efficient Counting:** Hash maps allow for `O(1)` average-time complexity for insertion, deletion, and lookup operations. This makes counting character frequencies very fast.
+*   **Fixed Character Set:** Since the problem specifies that strings consist only of lowercase English letters, we know there are only 26 possible characters. This fixed and small character set allows us to use an array of size 26 instead of a general-purpose hash map. Each index `0` to `25` can correspond to a letter (`'a'` to `'z'`). This array acts as a highly optimized frequency map.
+*   **Optimal Time Complexity:** By using a frequency map, we can solve the problem by iterating through each string once, leading to a linear time complexity solution.
+
+### Alternative: Sorting
+Another approach involves sorting both strings and then comparing them. If two strings are anagrams, their sorted versions will be identical. While conceptually simple, this method is generally less efficient than frequency counting for typical string lengths due to the time complexity of sorting.
+
+## Step-by-Step Logic
+
+We'll explore two main approaches: a brute-force approach using sorting and the optimal approach using a frequency map/array.
+
+### 1. Naive/Brute-Force Solution: Sorting and Comparison
+
+The intuition here is straightforward: if two strings are anagrams, then rearranging their letters will result in the same sequence of characters when sorted alphabetically.
+
+**Logic:**
+1.  **Check Lengths:** First, compare the lengths of `s` and `t`. If `len(s) != len(t)`, they cannot be anagrams, so return `false`.
+2.  **Sort Strings:** Convert both strings into character arrays (or lists), sort these arrays, and then convert them back into strings.
+3.  **Compare Sorted Strings:** Compare the two sorted strings. If they are identical, return `true`; otherwise, return `false`.
+
+**Example Dry Run: `s = "listen"`, `t = "silent"`**
+
+1.  `len(s)` (6) == `len(t)` (6). Proceed.
+2.  Sort `s`: `"listen"` becomes `['e', 'i', 'l', 'n', 's', 't']` → `"eilnst"`.
+3.  Sort `t`: `"silent"` becomes `['e', 'i', 'l', 'n', 's', 't']` → `"eilnst"`.
+4.  Compare `"eilnst"` and `"eilnst"`. They are equal. Return `true`.
+
+### 2. Optimal Solution: Count Dictionary (Frequency Array)
+
+This approach leverages the idea that two strings are anagrams if and only if they have the same count for every character.
+
+**Logic:**
+1.  **Length Check:** As with the sorting method, immediately return `false` if `len(s) != len(t)`. This is a crucial early exit condition.
+2.  **Initialize Frequency Map/Array:** Create a frequency map (e.g., a dictionary or an array of size 26 for lowercase English letters) initialized with zeros. Let's call it `char_counts`.
+3.  **Process String `s`:** Iterate through each character `c` in `s`. For each character, increment its corresponding count in `char_counts`.
+    *   If using an array: `char_counts[ord(c) - ord('a')] += 1`.
+4.  **Process String `t`:** Iterate through each character `c` in `t`. For each character, decrement its corresponding count in `char_counts`.
+    *   If using an array: `char_counts[ord(c) - ord('a')] -= 1`.
+5.  **Verify Frequencies:** After processing both strings, iterate through `char_counts`. If all counts are zero, it means every character in `s` had a matching character in `t` (and vice-versa), so return `true`. If any count is non-zero, it means there's a mismatch in character frequencies, so return `false`.
+
+**Example Dry Run: `s = "anagram"`, `t = "nagaram"`**
+
+1.  `len(s)` (7) == `len(t)` (7). Proceed.
+2.  Initialize `char_counts = {'a': 0, 'b': 0, ..., 'z': 0}` (conceptually, or an array of 26 zeros).
+
+3.  **Process `s = "anagram"`:**
+    *   'a': `char_counts['a']` becomes 1
+    *   'n': `char_counts['n']` becomes 1
+    *   'a': `char_counts['a']` becomes 2
+    *   'g': `char_counts['g']` becomes 1
+    *   'r': `char_counts['r']` becomes 1
+    *   'a': `char_counts['a']` becomes 3
+    *   'm': `char_counts['m']` becomes 1
+        *   `char_counts` after `s`: `{'a': 3, 'g': 1, 'm': 1, 'n': 1, 'r': 1, ...other_chars: 0}`
+
+4.  **Process `t = "nagaram"`:**
+    *   'n': `char_counts['n']` becomes 0
+    *   'a': `char_counts['a']` becomes 2
+    *   'g': `char_counts['g']` becomes 0
+    *   'a': `char_counts['a']` becomes 1
+    *   'r': `char_counts['r']` becomes 0
+    *   'a': `char_counts['a']` becomes 0
+    *   'm': `char_counts['m']` becomes 0
+    *   `char_counts` after `t`: `{'a': 0, 'g': 0, 'm': 0, 'n': 0, 'r': 0, ...other_chars: 0}`
+
+5.  **Verify `char_counts`:** All values in `char_counts` are 0. Return `true`.
+
+## Complexity Analysis
+
+| Approach                       | Time Complexity | Space Complexity | Reasoning                                                                                                                                                                                                                                                                     |
+| :----------------------------- | :-------------- | :--------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **1. Sorting and Comparison**  | `O(N log N)`    | `O(N)`           | **Time:** Sorting typically takes `O(N log N)` time, where `N` is the length of the string. Since we sort two strings, it's `O(N log N) + O(N log N)`, which simplifies to `O(N log N)`. <br>**Space:** Depending on the sorting algorithm, `O(N)` space might be required for storing the sorted strings or during the sorting process (e.g., Timsort in Python). |
+| **2. Count Dictionary (Optimal)** | `O(N)`          | `O(1)`           | **Time:** We iterate through string `s` once (`O(N)`), and then through string `t` once (`O(N)`). Each character operation (increment/decrement) is `O(1)`. Finally, iterating through the frequency map (max 26 entries) is `O(1)`. Total: `O(N)`. <br>**Space:** We use a fixed-size array (26 integers) or a hash map that will store at most 26 unique lowercase English letters. This makes the space complexity constant, `O(1)`. |
+
+## Real-World Applications
+
+The "Valid Anagram" problem, or the underlying techniques it demonstrates, appear in various real-world software scenarios:
+
+1.  **Search Query Normalization:** In search engines, users might type queries with characters in a different order (e.g., "iphone" vs. "phonei"). Anagram detection (or a more complex form of character/token frequency comparison) can help normalize queries to match relevant documents, improving search results.
+2.  **Text Analysis and Natural Language Processing (NLP):**
+    *   **Lexical Analysis:** Identifying words that are anagrams can be part of linguistic studies, puzzles, or word games.
+    *   **Document Comparison:** While not direct anagrams, the concept of character/word frequency is fundamental in comparing documents for similarity, plagiarism detection, or topic modeling.
+3.  **Data Validation:** In some systems, ensuring that a user-entered string is a rearrangement of an expected string (e.g., for certain codes or identifiers that are order-independent) could use this logic.
+4.  **Security and Hashing (Conceptual):** While not directly used for cryptographic hashing, the idea of checking if two pieces of data have the same "makeup" regardless of order is conceptually related to how some checksums or hash functions might operate on properties of data.
+5.  **Educational Software/Games:** Word puzzle games often involve finding anagrams.
+6.  **Compiler Design (Symbol Tables):** While not for anagrams specifically, frequency maps (hash maps) are critical components of compilers for managing symbol tables, storing variable names, and their attributes for quick lookup.""",
 }

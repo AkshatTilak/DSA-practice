@@ -3,5 +3,302 @@ INFO = {
     'link': 'https://leetcode.com/problems/course-schedule/',
     'description': 'Topological sort course check.',
     'groups': ['Graph'],
-    'readme_content': '# Course Schedule\n\n## 📌 Overview & Problem Explanation\n\nThe **Course Schedule** problem is a classic graph theory challenge that asks whether it is possible to complete a set of courses given a series of prerequisites. Each prerequisite is represented as a pair `[a, b]`, meaning that to take course `a`, you must first complete course `b`.\n\nIn graph terms, this is a problem of **Cycle Detection in a Directed Graph**. If the dependencies form a cycle (e.g., Course 0 requires Course 1, and Course 1 requires Course 0), it is logically impossible to finish the courses. If no cycle exists, the graph is a **Directed Acyclic Graph (DAG)**, and a valid sequence (topological sort) exists.\n\n### 📥 Inputs & 📤 Outputs\n- **Input**: \n    - `numCourses`: An integer representing the total number of courses (nodes).\n    - `prerequisites`: A list of integer pairs `[course, prerequisite]` (directed edges).\n- **Output**: \n    - `Boolean`: `True` if all courses can be finished (no cycles), `False` otherwise.\n\n### ⚠️ Constraints & Edge Cases\n- **Constraints**: \n    - $1 \\le \\text{numCourses} \\le 2000$\n    - $0 \\le \\text{prerequisites.length} \\le 5000$\n- **Edge Cases**:\n    - **No Prerequisites**: If the list is empty, return `True` immediately.\n    - **Disconnected Components**: The graph might have several isolated clusters of courses; the algorithm must handle all of them.\n    - **Self-Loops**: A course requiring itself `[0, 0]` is an immediate cycle.\n    - **Multiple Dependencies**: A course might require multiple other courses.\n\n---\n\n## 🧠 Core Concepts & Algorithms\n\n### 1. Directed Acyclic Graph (DAG)\nA **Directed Graph** is one where edges have a direction. A **DAG** is a directed graph with no cycles. The ability to complete the courses is exactly equivalent to confirming that the dependency graph is a DAG.\n\n### 2. Topological Sort\nTopological sorting is a linear ordering of vertices such that for every directed edge $u \\rightarrow v$, vertex $u$ comes before $v$ in the ordering. If a graph can be topologically sorted, it is by definition a DAG.\n\n### 3. Algorithmic Patterns\nTwo primary patterns are used to solve this:\n\n#### A. Kahn\'s Algorithm (BFS Approach)\nThis approach focuses on the **In-Degree** of nodes. The in-degree is the number of incoming edges to a node.\n- Nodes with an in-degree of $0$ have no prerequisites and can be completed immediately.\n- By repeatedly removing these "ready" nodes and updating their neighbors, we can determine if all nodes can be processed.\n\n#### B. DFS with State Tracking (Recursion Stack)\nThis approach explores as deep as possible along a path. To detect a cycle, we track whether a node is currently "in-flight" in the current recursion stack.\n- **Unvisited**: Not yet processed.\n- **Visiting**: Currently in the recursion stack (if we hit a "Visiting" node, a cycle exists).\n- **Visited**: Fully processed and confirmed not to be part of a cycle.\n\n---\n\n## 🛠️ Step-by-Step Logic\n\n### Approach 1: Kahn\'s Algorithm (BFS)\n1. **Graph Construction**: Create an adjacency list to represent the graph and an array `in_degree` to store the number of prerequisites for each course.\n2. **Initialize Queue**: Find all courses with `in_degree == 0` and push them into a queue.\n3. **Process Queue**:\n    - While the queue is not empty:\n        - Pop a course `u`.\n        - Increment a `count` of completed courses.\n        - For every course `v` that depends on `u`:\n            - Decrement `in_degree[v]`.\n            - If `in_degree[v]` becomes $0$, push `v` into the queue.\n4. **Final Check**: If `count == numCourses`, return `True`. Otherwise, return `False` (a cycle prevented some nodes from ever reaching in-degree 0).\n\n### Approach 2: Depth First Search (DFS)\n1. **Graph Construction**: Create an adjacency list.\n2. **State Array**: Initialize a `state` array where `0 = Unvisited`, `1 = Visiting`, and `2 = Visited`.\n3. **Recursive Exploration**:\n    - For each course, if it is `Unvisited`, start a DFS.\n    - Mark the current node as `Visiting`.\n    - For each neighbor:\n        - If the neighbor is `Visiting` $\\rightarrow$ **Cycle detected!** Return `False`.\n        - If the neighbor is `Unvisited` $\\rightarrow$ Recursively call DFS. If it returns `False`, propagate it up.\n    - After visiting all neighbors, mark the current node as `Visited`.\n4. **Completion**: If all nodes are processed without finding a cycle, return `True`.\n\n---\n\n## 💻 Implementation\n\n```python\nfrom collections import deque, defaultdict\n\ndef solve_optimal_bfs(numCourses, prerequisites):\n    # 1. Build Graph and In-Degree array\n    adj = defaultdict(list)\n    in_degree = [0] * numCourses\n    \n    for dest, src in prerequisites:\n        adj[src].append(dest)\n        in_degree[dest] += 1\n    \n    # 2. Queue all nodes with 0 in-degree\n    queue = deque([i for i in range(numCourses) if in_degree[i] == 0])\n    \n    completed_courses = 0\n    \n    # 3. Process the queue\n    while queue:\n        u = queue.popleft()\n        completed_courses += 1\n        \n        for v in adj[u]:\n            in_degree[v] -= 1\n            if in_degree[v] == 0:\n                queue.append(v)\n                \n    # 4. If we processed all courses, no cycle exists\n    return completed_courses == numCourses\n\ndef solve_optimal_dfs(numCourses, prerequisites):\n    adj = defaultdict(list)\n    for dest, src in prerequisites:\n        adj[src].append(dest)\n        \n    # 0: Unvisited, 1: Visiting, 2: Visited\n    state = [0] * numCourses\n    \n    def has_cycle(u):\n        if state[u] == 1: return True  # Found a back-edge\n        if state[u] == 2: return False # Already verified\n        \n        state[u] = 1 # Mark as visiting\n        for v in adj[u]:\n            if has_cycle(v):\n                return True\n        \n        state[u] = 2 # Mark as visited\n        return False\n\n    for i in range(numCourses):\n        if state[i] == 0:\n            if has_cycle(i):\n                return False\n                \n    return True\n```\n\n---\n\n## 📊 Complexity Analysis\n\n| Approach | Time Complexity | Space Complexity | Reasoning |\n| :--- | :--- | :--- | :--- |\n| **Kahn\'s (BFS)** | $O(V + E)$ | $O(V + E)$ | We visit every vertex once and every edge once. Space is used for the adjacency list and in-degree array. |\n| **DFS** | $O(V + E)$ | $O(V + E)$ | We visit every vertex and edge once. Space is used for the adjacency list and the recursion stack. |\n\n*Where $V$ = `numCourses` and $E$ = `len(prerequisites)`.*\n\n---\n\n## 🌍 Real-World Applications\n\nThe pattern of cycle detection and topological sorting is fundamental to many software engineering systems:\n\n1. **Build Systems (e.g., Make, Gradle, Bazel)**: Determining the order in which source files should be compiled based on their dependencies.\n2. **Package Managers (e.g., npm, pip, apt)**: Resolving the installation order of libraries. If Library A depends on B, and B depends on A, the package manager throws a "Circular Dependency" error.\n3. **Task Scheduling (e.g., Apache Airflow)**: Defining DAGs for data pipelines where certain tasks must finish before others begin.\n4. **Instruction Scheduling in Compilers**: Reordering machine instructions to minimize pipeline stalls while maintaining data dependencies.\n5. **Spreadsheet Formula Evaluation**: When cell A1 depends on B1, and B1 depends on C1, the spreadsheet engine uses a similar logic to calculate values in the correct order.',
+    'readme_content': """# Course Schedule
+
+## 📌 Overview & Problem Explanation
+
+The **Course Schedule** problem is a classic graph theory challenge that asks whether it is possible to complete a set of courses given a series of prerequisites. Each prerequisite is represented as a pair `[a, b]`, meaning that to take course `a`, you must first complete course `b`.
+
+In graph terms, this is a problem of **Cycle Detection in a Directed Graph**. If the dependencies form a cycle (e.g., Course 0 requires Course 1, and Course 1 requires Course 0), it is logically impossible to finish the courses. If no cycle exists, the graph is a **Directed Acyclic Graph (DAG)**, and a valid sequence (topological sort) exists.
+
+### 📥 Inputs & 📤 Outputs
+- **Input**: 
+    - `numCourses`: An integer representing the total number of courses (nodes).
+    - `prerequisites`: A list of integer pairs `[course, prerequisite]` (directed edges).
+- **Output**: 
+    - `Boolean`: `True` if all courses can be finished (no cycles), `False` otherwise.
+
+### ⚠️ Constraints & Edge Cases
+- **Constraints**: 
+    - $1 \le \text{numCourses} \le 2000$
+    - $0 \le \text{prerequisites.length} \le 5000$
+- **Edge Cases**:
+    - **No Prerequisites**: If the list is empty, return `True` immediately.
+    - **Disconnected Components**: The graph might have several isolated clusters of courses; the algorithm must handle all of them.
+    - **Self-Loops**: A course requiring itself `[0, 0]` is an immediate cycle.
+    - **Multiple Dependencies**: A course might require multiple other courses.
+
+---
+
+## 🧠 Core Concepts & Algorithms
+
+### 1. Directed Acyclic Graph (DAG)
+A **Directed Graph** is one where edges have a direction. A **DAG** is a directed graph with no cycles. The ability to complete the courses is exactly equivalent to confirming that the dependency graph is a DAG.
+
+### 2. Topological Sort
+Topological sorting is a linear ordering of vertices such that for every directed edge $u \rightarrow v$, vertex $u$ comes before $v$ in the ordering. If a graph can be topologically sorted, it is by definition a DAG.
+
+### 3. Algorithmic Patterns
+Two primary patterns are used to solve this:
+
+#### A. Kahn's Algorithm (BFS Approach)
+This approach focuses on the **In-Degree** of nodes. The in-degree is the number of incoming edges to a node.
+- Nodes with an in-degree of $0$ have no prerequisites and can be completed immediately.
+- By repeatedly removing these "ready" nodes and updating their neighbors, we can determine if all nodes can be processed.
+
+#### B. DFS with State Tracking (Recursion Stack)
+This approach explores as deep as possible along a path. To detect a cycle, we track whether a node is currently "in-flight" in the current recursion stack.
+- **Unvisited**: Not yet processed.
+- **Visiting**: Currently in the recursion stack (if we hit a "Visiting" node, a cycle exists).
+- **Visited**: Fully processed and confirmed not to be part of a cycle.
+
+---
+
+## 🛠️ Step-by-Step Logic
+
+### Approach 1: Kahn's Algorithm (BFS)
+1. **Graph Construction**: Create an adjacency list to represent the graph and an array `in_degree` to store the number of prerequisites for each course.
+2. **Initialize Queue**: Find all courses with `in_degree == 0` and push them into a queue.
+3. **Process Queue**:
+    - While the queue is not empty:
+        - Pop a course `u`.
+        - Increment a `count` of completed courses.
+        - For every course `v` that depends on `u`:
+            - Decrement `in_degree[v]`.
+            - If `in_degree[v]` becomes $0$, push `v` into the queue.
+4. **Final Check**: If `count == numCourses`, return `True`. Otherwise, return `False` (a cycle prevented some nodes from ever reaching in-degree 0).
+
+### Approach 2: Depth First Search (DFS)
+1. **Graph Construction**: Create an adjacency list.
+2. **State Array**: Initialize a `state` array where `0 = Unvisited`, `1 = Visiting`, and `2 = Visited`.
+3. **Recursive Exploration**:
+    - For each course, if it is `Unvisited`, start a DFS.
+    - Mark the current node as `Visiting`.
+    - For each neighbor:
+        - If the neighbor is `Visiting` $\rightarrow$ **Cycle detected!** Return `False`.
+        - If the neighbor is `Unvisited` $\rightarrow$ Recursively call DFS. If it returns `False`, propagate it up.
+    - After visiting all neighbors, mark the current node as `Visited`.
+4. **Completion**: If all nodes are processed without finding a cycle, return `True`.
+
+---
+
+## 💻 Implementation
+
+```python
+from collections import deque, defaultdict
+
+def solve_optimal_bfs(numCourses, prerequisites):
+    # 1. Build Graph and In-Degree array
+    adj = defaultdict(list)
+    in_degree = [0] * numCourses
+    
+    for dest, src in prerequisites:
+        adj[src].append(dest)
+        in_degree[dest] += 1
+    
+    # 2. Queue all nodes with 0 in-degree
+    queue = deque([i for i in range(numCourses) if in_degree[i] == 0])
+    
+    completed_courses = 0
+    
+    # 3. Process the queue
+    while queue:
+        u = queue.popleft()
+        completed_courses += 1
+        
+        for v in adj[u]:
+            in_degree[v] -= 1
+            if in_degree[v] == 0:
+                queue.append(v)
+                
+    # 4. If we processed all courses, no cycle exists
+    return completed_courses == numCourses
+
+def solve_optimal_dfs(numCourses, prerequisites):
+    adj = defaultdict(list)
+    for dest, src in prerequisites:
+        adj[src].append(dest)
+        
+    # 0: Unvisited, 1: Visiting, 2: Visited
+    state = [0] * numCourses
+    
+    def has_cycle(u):
+        if state[u] == 1: return True  # Found a back-edge
+        if state[u] == 2: return False # Already verified
+        
+        state[u] = 1 # Mark as visiting
+        for v in adj[u]:
+            if has_cycle(v):
+                return True
+        
+        state[u] = 2 # Mark as visited
+        return False
+
+    for i in range(numCourses):
+        if state[i] == 0:
+            if has_cycle(i):
+                return False
+                
+    return True
+```
+
+---
+
+## 📊 Complexity Analysis
+
+| Approach | Time Complexity | Space Complexity | Reasoning |
+| :--- | :--- | :--- | :--- |
+| **Kahn's (BFS)** | $O(V + E)$ | $O(V + E)$ | We visit every vertex once and every edge once. Space is used for the adjacency list and in-degree array. |
+| **DFS** | $O(V + E)$ | $O(V + E)$ | We visit every vertex and edge once. Space is used for the adjacency list and the recursion stack. |
+
+*Where $V$ = `numCourses` and $E$ = `len(prerequisites)`.*
+
+---
+
+## 🌍 Real-World Applications
+
+The pattern of cycle detection and topological sorting is fundamental to many software engineering systems:
+
+1. **Build Systems (e.g., Make, Gradle, Bazel)**: Determining the order in which source files should be compiled based on their dependencies.
+2. **Package Managers (e.g., npm, pip, apt)**: Resolving the installation order of libraries. If Library A depends on B, and B depends on A, the package manager throws a "Circular Dependency" error.
+3. **Task Scheduling (e.g., Apache Airflow)**: Defining DAGs for data pipelines where certain tasks must finish before others begin.
+4. **Instruction Scheduling in Compilers**: Reordering machine instructions to minimize pipeline stalls while maintaining data dependencies.
+5. **Spreadsheet Formula Evaluation**: When cell A1 depends on B1, and B1 depends on C1, the spreadsheet engine uses a similar logic to calculate values in the correct order.""",
+    'solutions': """# --- APPROACH 1: Naive (DFS Cycle Detection) ---
+# Time Complexity: O(V + E)
+# Space Complexity: O(V + E)
+# This approach uses Depth First Search (DFS) to detect cycles in the directed graph. 
+# We maintain a 'visited' set to avoid redundant work and a 'path' set (recursion stack) 
+# to detect if we encounter a node that is already part of the current traversal path, 
+# which indicates a cycle.
+def canFinish_naive(numCourses: int, prerequisites: list[list[int]]) -> bool:
+    adj = [[] for _ in range(numCourses)]
+    for course, pre in prerequisites:
+        adj[pre].append(course)
+    
+    visited = [False] * numCourses
+    path = [False] * numCourses
+    
+    def has_cycle(u):
+        visited[u] = True
+        path[u] = True
+        
+        for v in adj[u]:
+            if not visited[v]:
+                if has_cycle(v):
+                    return True
+            elif path[v]:
+                return True
+        
+        path[u] = False
+        return False
+
+    for i in range(numCourses):
+        if not visited[i]:
+            if has_cycle(i):
+                return False
+    return True
+
+# --- APPROACH 2: Optimal (Kahn's Algorithm - BFS Topological Sort) ---
+# Time Complexity: O(V + E)
+# Space Complexity: O(V + E)
+# Kahn's Algorithm is the optimal approach for this problem because it iteratively 
+# processes nodes with an in-degree of 0. It avoids the risk of StackOverflowError 
+# associated with deep recursion in DFS and directly simulates the process of 
+# taking courses as their prerequisites are completed. If the number of processed 
+# nodes equals the total number of courses, the graph is a Directed Acyclic Graph (DAG).
+from collections import deque
+
+def canFinish_optimal(numCourses: int, prerequisites: list[list[int]]) -> bool:
+    # Step 1: Build adjacency list and calculate in-degrees
+    adj = [[] for _ in range(numCourses)]
+    in_degree = [0] * numCourses
+    
+    for course, pre in prerequisites:
+        adj[pre].append(course)
+        in_degree[course] += 1
+        
+    # Step 2: Initialize queue with all courses having no prerequisites
+    queue = deque([i for i in range(numCourses) if in_degree[i] == 0])
+    
+    courses_taken = 0
+    
+    # Step 3: Process the queue
+    while queue:
+        u = queue.popleft()
+        courses_taken += 1
+        
+        for v in adj[u]:
+            in_degree[v] -= 1
+            # If in-degree becomes 0, all prerequisites for course v are met
+            if in_degree[v] == 0:
+                queue.append(v)
+                
+    # If we processed all courses, no cycle exists
+    return courses_taken == numCourses
+
+# --- APPROACH 3: Secondary Language (Java Variant) ---
+\"\"\"
+package graphs;
+
+import java.util.*;
+
+public class CourseSchedule {
+    /**
+     * Determines if all courses can be finished given the prerequisites.
+     * This implementation uses Kahn's Algorithm (BFS Topological Sort).
+     */
+    public boolean canFinish(int numCourses, int[][] prerequisites) {
+        if (numCourses <= 0) return true;
+        
+        List<List<Integer>> adj = new ArrayList<>();
+        int[] inDegree = new int[numCourses];
+        
+        for (int i = 0; i < numCourses; i++) {
+            adj.add(new ArrayList<>());
+        }
+        
+        // Build the graph
+        for (int[] pair : prerequisites) {
+            int course = pair[0];
+            int pre = pair[1];
+            adj.get(pre).add(course);
+            inDegree[course]++;
+        }
+        
+        // Queue for courses with no prerequisites
+        Queue<Integer> queue = new LinkedList<>();
+        for (int i = 0; i < numCourses; i++) {
+            if (inDegree[i] == 0) {
+                queue.offer(i);
+            }
+        }
+        
+        int count = 0;
+        while (!queue.isEmpty()) {
+            int current = queue.poll();
+            count++;
+            
+            for (int neighbor : adj.get(current)) {
+                inDegree[neighbor]--;
+                if (inDegree[neighbor] == 0) {
+                    queue.offer(neighbor);
+                }
+            }
+        }
+        
+        // If count equals numCourses, then it's a DAG
+        return count == numCourses;
+    }
+
+    public static void main(String[] args) {
+        CourseSchedule solver = new CourseSchedule();
+        int[][] pre1 = {{1, 0}};
+        System.out.println(solver.canFinish(2, pre1)); // True
+        
+        int[][] pre2 = {{1, 0}, {0, 1}};
+        System.out.println(solver.canFinish(2, pre2)); // False
+    }
+}
+\"\"\"""",
 }

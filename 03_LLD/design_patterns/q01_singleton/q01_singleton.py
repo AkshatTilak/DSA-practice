@@ -35,59 +35,73 @@ class DatabaseConnectionPool(metaclass=SingletonMeta):
 # PLURAL SOLUTIONS & COMPLEXITY ANALYSIS
 # =====================================================================
 
-# --- APPROACH 1: Naive (Locked call without check) ---
-# Time Complexity: O(1) on creation, but incurs Lock overhead on EVERY call.
+# --- APPROACH 1: Naive (Brute Force) ---
+# Time Complexity: O(1)
 # Space Complexity: O(1)
-class SingletonMetaNaive(type):
+# This approach is not thread-safe. In a multi-threaded environment, multiple instances 
+# could be created if two threads enter the 'if' block simultaneously.
+import threading
+
+class SingletonMeta_naive(type):
     _instances = {}
-    _lock = threading.Lock()
 
     def __call__(cls, *args, **kwargs):
-        # Naive: Acquire lock for every instantiation request (bottleneck)
-        with cls._lock:
-            if cls not in cls._instances:
-                cls._instances[cls] = super().__call__(*args, **kwargs)
-            return cls._instances[cls]
-
-
-# --- APPROACH 2: Optimal Thread-Safe Double-Checked Locking ---
-# Time Complexity: O(1) creation, O(1) retrieval with NO lock overhead after creation.
-# Space Complexity: O(1)
-class SingletonMetaOptimal(type):
-    _instances = {}
-    _lock = threading.Lock()
-
-    def __call__(cls, *args, **kwargs):
-        # Check 1: If instance already exists, return immediately without locking
         if cls not in cls._instances:
-            # Check 2: Lock only when creating the instance
-            with cls._lock:
-                # Double check inside the lock
-                if cls not in cls._instances:
-                    cls._instances[cls] = super().__call__(*args, **kwargs)
+            # Race condition occurs here in multi-threaded environments
+            instance = super().__call__(*args, **kwargs)
+            cls._instances[cls] = instance
         return cls._instances[cls]
 
+# --- APPROACH 2: Optimal (Double-Checked Locking) ---
+# Time Complexity: O(1)
+# Space Complexity: O(1)
+# This is the optimal approach because it implements Double-Checked Locking. 
+# It avoids the overhead of acquiring a lock every time the instance is requested. 
+# The lock is only acquired if the instance hasn't been created yet, and the 
+# second check inside the lock ensures that only one thread creates the instance 
+# even if multiple threads passed the first check.
+import threading
 
-# --- APPROACH 3: Secondary Language (Java Double-Checked Locking) ---
+class SingletonMeta(type):
+    _instances = {}
+    _lock: threading.Lock = threading.Lock()
+
+    def __call__(cls, *args, **kwargs):
+        # First check: avoid locking if the instance already exists
+        if cls not in cls._instances:
+            # Synchronize access to the instance creation process
+            with cls._lock:
+                # Second check: ensure another thread didn't create the instance 
+                # while this thread was waiting for the lock
+                if cls not in cls._instances:
+                    instance = super().__call__(*args, **kwargs)
+                    cls._instances[cls] = instance
+        return cls._instances[cls]
+
+# --- APPROACH 3: Secondary Language (Java Variant) ---
 """
 package design_patterns;
 
-public class DatabaseConnectionPool {
-    private static volatile DatabaseConnectionPool instance;
+/**
+ * Java implementation of a thread-safe Singleton using Double-Checked Locking.
+ * The 'volatile' keyword is critical here to ensure that multiple threads 
+ * handle the instance variable correctly when it is being initialized.
+ */
+public class Singleton {
+    private static volatile Singleton instance;
     private static final Object lock = new Object();
-    
-    private String connectionString;
 
-    private DatabaseConnectionPool() {
-        this.connectionString = "jdbc:postgresql://localhost:5432/db";
+    private Singleton() {
+        // Private constructor to prevent instantiation from other classes
     }
 
-    public static DatabaseConnectionPool getInstance() {
-        // Double-Checked Locking
+    public static Singleton getInstance() {
+        // First check: avoid synchronization overhead if instance is already initialized
         if (instance == null) {
             synchronized (lock) {
+                // Second check: verify no other thread initialized it while waiting for lock
                 if (instance == null) {
-                    instance = new DatabaseConnectionPool();
+                    instance = new Singleton();
                 }
             }
         }

@@ -3,5 +3,299 @@ INFO = {
     'link': 'https://leetcode.com/problems/copy-list-with-random-pointer/',
     'description': 'Copy list.',
     'groups': ['Linked List', 'Hashing'],
-    'readme_content': '# Copy List With Random Pointer\n\n## 📌 Overview & Problem Explanation\n\nThe challenge is to create a **deep copy** of a special linked list. In a standard linked list, each node only points to the next node. In this version, each node has two pointers:\n1. `next`: Points to the next node in the sequence.\n2. `random`: Points to any node in the list, or `null`.\n\n### What is a Deep Copy?\nA **shallow copy** would simply copy the head pointer, meaning both the original and the copy point to the same memory addresses. A **deep copy** requires creating entirely new node instances in memory. If you change a value in the original list, the copied list must remain unchanged.\n\n### Constraints & Edge Cases\n- **Input**: A linked list where each node contains an integer value and two pointers.\n- **Output**: A new linked list that is an exact structural replica of the input.\n- **Constraints**:\n    - The number of nodes is in the range $[0, 10^3]$.\n    - Node values are in the range $[-10^4, 10^4]$.\n    - The `random` pointer can point to any node in the list, including itself, or be `null`.\n- **Edge Cases**:\n    - **Empty List**: The input `head` is `null`.\n    - **Single Node**: The list has only one node pointing to itself via the `random` pointer.\n    - **Circular Random Pointers**: The `random` pointer creates a cycle.\n\n---\n\n## ⚙️ Core Concepts & Data Structures\n\nTo solve this problem, we must overcome one primary hurdle: **Forward Referencing**. When we are at Node A, its `random` pointer might point to Node Z, which we haven\'t created yet.\n\n### 1. Hashing (The Mapping Strategy)\nWe can use a **Hash Map (Dictionary)** to create a mapping between the original node and its corresponding copied node. \n- **Key**: Original Node object.\n- **Value**: Copied Node object.\nThis allows us to retrieve the copy of any node in $O(1)$ time, regardless of whether we have processed its `next` pointer yet.\n\n### 2. Interweaving (The Pointer Manipulation Strategy)\nTo optimize space, we can use the original list as its own "storage" for the copies. By inserting each copied node directly after its original counterpart, we eliminate the need for an external hash map. The relationship becomes:\n`Original Node` $\\rightarrow$ `Copied Node` $\\rightarrow$ `Next Original Node` $\\rightarrow$ `Next Copied Node`.\n\n---\n\n## 🚀 Step-by-Step Logic\n\n### Approach 1: The Hash Map Method (Intuitive)\nThis is the most straightforward approach, utilizing extra space to simplify the logic.\n\n1. **First Pass**: Traverse the original list. For every node encountered, create a new node with the same value and store the pair `{OriginalNode: CopiedNode}` in the hash map.\n2. **Second Pass**: Traverse the original list again. For each node:\n   - Use the map to find its corresponding copy.\n   - Set `Copy.next` to the map\'s value for `Original.next`.\n   - Set `Copy.random` to the map\'s value for `Original.random`.\n3. **Return**: The copy of the original head.\n\n---\n\n### Approach 2: The Interweaving Method (Optimal Space)\nThis approach is preferred in high-performance systems as it reduces auxiliary space complexity to $O(1)$.\n\n#### Step 1: Create Interwoven Nodes\nIterate through the list and insert a copy of each node immediately after the original.\n- **Original**: `A -> B -> C`\n- **Interwoven**: `A -> A\' -> B -> B\' -> C -> C\'`\n\n#### Step 2: Assign Random Pointers\nIterate through the interwoven list. Because the copy `A\'` is always immediately after `A`, the copy of `A.random` is always `A.random.next`.\n- Logic: `curr.next.random = curr.random.next` (handling nulls carefully).\n\n#### Step 3: Separate the Lists\nRestore the original list and extract the copy list by decoupling the nodes.\n- `A -> A\' -> B -> B\'` becomes `A -> B` and `A\' -> B\'`.\n\n### Dry Run Example (Interweaving)\n**Input**: `[{"val": 1, "random": null}, {"val": 2, "random": node 1}]`\n\n1. **Interweave**: `1 -> 1\' -> 2 -> 2\' -> null`\n2. **Randoms**: \n   - Node 1 random is null $\\rightarrow$ 1\' random is null.\n   - Node 2 random is Node 1 $\\rightarrow$ 2\' random is `Node 2.random.next` (which is 1\').\n3. **Separate**:\n   - Original: `1 -> 2 -> null`\n   - Copy: `1\' -> 2\' -> null`\n\n---\n\n## 📊 Complexity Analysis\n\n| Approach | Time Complexity | Space Complexity | Reasoning |\n| :--- | :--- | :--- | :--- |\n| **Hash Map** | $O(N)$ | $O(N)$ | We traverse the list twice and store all $N$ nodes in a map. |\n| **Interweaving**| $O(N)$ | $O(1)$ | We traverse the list three times, but use no extra auxiliary space besides the output list. |\n\n> **Note**: In big-O analysis for "Copy" problems, the space required for the output itself is typically not counted as "extra" auxiliary space.\n\n---\n\n## 💻 Implementation\n\n```python\nclass Node:\n    def __init__(self, x: int, next: \'Node\' = None, random: \'Node\' = None):\n        self.val = int(x)\n        self.next = next\n        self.random = random\n\ndef solve_optimal(head: \'Node\') -> \'Node\':\n    if not head:\n        return None\n\n    # Step 1: Interweave\n    curr = head\n    while curr:\n        new_node = Node(curr.val, curr.next)\n        curr.next = new_node\n        curr = new_node.next\n\n    # Step 2: Assign Random Pointers\n    curr = head\n    while curr:\n        if curr.random:\n            curr.next.random = curr.random.next\n        curr = curr.next.next\n\n    # Step 3: Separate Lists\n    curr = head\n    dummy = Node(0) # Helper to track the head of the copy\n    copy_curr = dummy\n    \n    while curr:\n        # Extract the copy\n        copy_curr.next = curr.next\n        copy_curr = copy_curr.next\n        \n        # Restore the original\n        curr.next = curr.next.next\n        curr = curr.next\n        \n    return dummy.next\n```\n\n---\n\n## 🌍 Real-World Applications\n\nThis pattern of "cloning a graph-like structure" is highly prevalent in software engineering:\n\n1. **Undo/Redo Mechanisms (Memento Pattern)**: When saving a state of a complex object graph (like a document with interconnected elements), a deep copy is required to ensure that modifying the current state doesn\'t accidentally corrupt the history.\n2. **Compiler Design (Abstract Syntax Trees)**: When performing optimizations on an AST, compilers often clone portions of the tree to test different optimization paths without destroying the original source representation.\n3. **Game State Serialization**: In gaming, creating "save points" or "snapshots" of the game world involves deep-copying the current state of all entities and their relationships.\n4. **Prototype Pattern**: Used in object-oriented design to create new objects by copying an existing "prototype" instance, ensuring that the new object is independent of the original.',
+    'readme_content': """# Copy List With Random Pointer
+
+## 📌 Overview & Problem Explanation
+
+The challenge is to create a **deep copy** of a special linked list. In a standard linked list, each node only points to the next node. In this version, each node has two pointers:
+1. `next`: Points to the next node in the sequence.
+2. `random`: Points to any node in the list, or `null`.
+
+### What is a Deep Copy?
+A **shallow copy** would simply copy the head pointer, meaning both the original and the copy point to the same memory addresses. A **deep copy** requires creating entirely new node instances in memory. If you change a value in the original list, the copied list must remain unchanged.
+
+### Constraints & Edge Cases
+- **Input**: A linked list where each node contains an integer value and two pointers.
+- **Output**: A new linked list that is an exact structural replica of the input.
+- **Constraints**:
+    - The number of nodes is in the range $[0, 10^3]$.
+    - Node values are in the range $[-10^4, 10^4]$.
+    - The `random` pointer can point to any node in the list, including itself, or be `null`.
+- **Edge Cases**:
+    - **Empty List**: The input `head` is `null`.
+    - **Single Node**: The list has only one node pointing to itself via the `random` pointer.
+    - **Circular Random Pointers**: The `random` pointer creates a cycle.
+
+---
+
+## ⚙️ Core Concepts & Data Structures
+
+To solve this problem, we must overcome one primary hurdle: **Forward Referencing**. When we are at Node A, its `random` pointer might point to Node Z, which we haven't created yet.
+
+### 1. Hashing (The Mapping Strategy)
+We can use a **Hash Map (Dictionary)** to create a mapping between the original node and its corresponding copied node. 
+- **Key**: Original Node object.
+- **Value**: Copied Node object.
+This allows us to retrieve the copy of any node in $O(1)$ time, regardless of whether we have processed its `next` pointer yet.
+
+### 2. Interweaving (The Pointer Manipulation Strategy)
+To optimize space, we can use the original list as its own "storage" for the copies. By inserting each copied node directly after its original counterpart, we eliminate the need for an external hash map. The relationship becomes:
+`Original Node` $\rightarrow$ `Copied Node` $\rightarrow$ `Next Original Node` $\rightarrow$ `Next Copied Node`.
+
+---
+
+## 🚀 Step-by-Step Logic
+
+### Approach 1: The Hash Map Method (Intuitive)
+This is the most straightforward approach, utilizing extra space to simplify the logic.
+
+1. **First Pass**: Traverse the original list. For every node encountered, create a new node with the same value and store the pair `{OriginalNode: CopiedNode}` in the hash map.
+2. **Second Pass**: Traverse the original list again. For each node:
+   - Use the map to find its corresponding copy.
+   - Set `Copy.next` to the map's value for `Original.next`.
+   - Set `Copy.random` to the map's value for `Original.random`.
+3. **Return**: The copy of the original head.
+
+---
+
+### Approach 2: The Interweaving Method (Optimal Space)
+This approach is preferred in high-performance systems as it reduces auxiliary space complexity to $O(1)$.
+
+#### Step 1: Create Interwoven Nodes
+Iterate through the list and insert a copy of each node immediately after the original.
+- **Original**: `A -> B -> C`
+- **Interwoven**: `A -> A' -> B -> B' -> C -> C'`
+
+#### Step 2: Assign Random Pointers
+Iterate through the interwoven list. Because the copy `A'` is always immediately after `A`, the copy of `A.random` is always `A.random.next`.
+- Logic: `curr.next.random = curr.random.next` (handling nulls carefully).
+
+#### Step 3: Separate the Lists
+Restore the original list and extract the copy list by decoupling the nodes.
+- `A -> A' -> B -> B'` becomes `A -> B` and `A' -> B'`.
+
+### Dry Run Example (Interweaving)
+**Input**: `[{"val": 1, "random": null}, {"val": 2, "random": node 1}]`
+
+1. **Interweave**: `1 -> 1' -> 2 -> 2' -> null`
+2. **Randoms**: 
+   - Node 1 random is null $\rightarrow$ 1' random is null.
+   - Node 2 random is Node 1 $\rightarrow$ 2' random is `Node 2.random.next` (which is 1').
+3. **Separate**:
+   - Original: `1 -> 2 -> null`
+   - Copy: `1' -> 2' -> null`
+
+---
+
+## 📊 Complexity Analysis
+
+| Approach | Time Complexity | Space Complexity | Reasoning |
+| :--- | :--- | :--- | :--- |
+| **Hash Map** | $O(N)$ | $O(N)$ | We traverse the list twice and store all $N$ nodes in a map. |
+| **Interweaving**| $O(N)$ | $O(1)$ | We traverse the list three times, but use no extra auxiliary space besides the output list. |
+
+> **Note**: In big-O analysis for "Copy" problems, the space required for the output itself is typically not counted as "extra" auxiliary space.
+
+---
+
+## 💻 Implementation
+
+```python
+class Node:
+    def __init__(self, x: int, next: 'Node' = None, random: 'Node' = None):
+        self.val = int(x)
+        self.next = next
+        self.random = random
+
+def solve_optimal(head: 'Node') -> 'Node':
+    if not head:
+        return None
+
+    # Step 1: Interweave
+    curr = head
+    while curr:
+        new_node = Node(curr.val, curr.next)
+        curr.next = new_node
+        curr = new_node.next
+
+    # Step 2: Assign Random Pointers
+    curr = head
+    while curr:
+        if curr.random:
+            curr.next.random = curr.random.next
+        curr = curr.next.next
+
+    # Step 3: Separate Lists
+    curr = head
+    dummy = Node(0) # Helper to track the head of the copy
+    copy_curr = dummy
+    
+    while curr:
+        # Extract the copy
+        copy_curr.next = curr.next
+        copy_curr = copy_curr.next
+        
+        # Restore the original
+        curr.next = curr.next.next
+        curr = curr.next
+        
+    return dummy.next
+```
+
+---
+
+## 🌍 Real-World Applications
+
+This pattern of "cloning a graph-like structure" is highly prevalent in software engineering:
+
+1. **Undo/Redo Mechanisms (Memento Pattern)**: When saving a state of a complex object graph (like a document with interconnected elements), a deep copy is required to ensure that modifying the current state doesn't accidentally corrupt the history.
+2. **Compiler Design (Abstract Syntax Trees)**: When performing optimizations on an AST, compilers often clone portions of the tree to test different optimization paths without destroying the original source representation.
+3. **Game State Serialization**: In gaming, creating "save points" or "snapshots" of the game world involves deep-copying the current state of all entities and their relationships.
+4. **Prototype Pattern**: Used in object-oriented design to create new objects by copying an existing "prototype" instance, ensuring that the new object is independent of the original.""",
+    'solutions': """# --- APPROACH 1: Naive (Brute Force) ---
+# Time Complexity: O(N)
+# Space Complexity: O(N)
+# This approach uses a hash map to create a 1:1 mapping between each node in the original list 
+# and its corresponding newly created node. We traverse the list twice: first to create all 
+# nodes and second to wire the next and random pointers.
+
+class Node:
+    def __init__(self, x: int, next: 'Node' = None, random: 'Node' = None):
+        self.val = int(x)
+        self.next = next
+        self.random = random
+
+def solve_naive(head: 'Node') -> 'Node':
+    if not head:
+        return None
+    
+    # Map to store original_node -> cloned_node
+    old_to_new = {None: None}
+    
+    # First pass: create all cloned nodes
+    curr = head
+    while curr:
+        old_to_new[curr] = Node(curr.val)
+        curr = curr.next
+        
+    # Second pass: assign next and random pointers
+    curr = head
+    while curr:
+        copy = old_to_new[curr]
+        copy.next = old_to_new[curr.next]
+        copy.random = old_to_new[curr.random]
+        curr = curr.next
+        
+    return old_to_new[head]
+
+# --- APPROACH 2: Optimal (Interweaving Nodes) ---
+# Time Complexity: O(N)
+# Space Complexity: O(1)
+# This approach is optimal because it eliminates the need for an external hash map.
+# It works by inserting each cloned node immediately after its original node in the list.
+# This allows us to find the cloned version of any node's random target by simply 
+# looking at the node immediately following the random target in the original list.
+def solve_optimal(head: 'Node') -> 'Node':
+    if not head:
+        return None
+    
+    # Step 1: Create cloned nodes and interweave them into the original list
+    # Original: A -> B -> C
+    # Interweaved: A -> A' -> B -> B' -> C -> C'
+    curr = head
+    while curr:
+        new_node = Node(curr.val, curr.next)
+        curr.next = new_node
+        curr = new_node.next
+        
+    # Step 2: Assign random pointers for the cloned nodes
+    curr = head
+    while curr:
+        if curr.random:
+            # The clone's random is the clone of the original's random
+            curr.next.random = curr.random.next
+        curr = curr.next.next
+        
+    # Step 3: Separate the interweaved list into original and cloned lists
+    curr = head
+    dummy = Node(0)
+    copy_curr = dummy
+    
+    while curr:
+        # Identify the clone
+        clone = curr.next
+        
+        # Extract the clone to the new list
+        copy_curr.next = clone
+        copy_curr = clone
+        
+        # Restore the original list's next pointer
+        curr.next = clone.next
+        curr = curr.next
+        
+    return dummy.next
+
+# --- APPROACH 3: Secondary Language (Java Variant) ---
+\"\"\"
+package linked_list;
+
+class Node {
+    int val;
+    Node next;
+    Node random;
+
+    public Node(int val) {
+        this.val = val;
+        this.next = null;
+        this.random = null;
+    }
+
+    public Node(int val, Node next, Node random) {
+        this.val = val;
+        this.next = next;
+        this.random = random;
+    }
+}
+
+public class CopyListWithRandomPointer {
+    public Node copyRandomList(Node head) {
+        if (head == null) return null;
+
+        // Step 1: Interweave
+        Node curr = head;
+        while (curr != null) {
+            Node newNode = new Node(curr.val);
+            newNode.next = curr.next;
+            curr.next = newNode;
+            curr = newNode.next;
+        }
+
+        // Step 2: Copy Random Pointers
+        curr = head;
+        while (curr != null) {
+            if (curr.random != null) {
+                curr.next.random = curr.random.next;
+            }
+            curr = curr.next.next;
+        }
+
+        // Step 3: Separate Lists
+        curr = head;
+        Node dummy = new Node(0);
+        Node copyCurr = dummy;
+        
+        while (curr != null) {
+            Node clone = curr.next;
+            
+            copyCurr.next = clone;
+            copyCurr = clone;
+            
+            curr.next = clone.next;
+            curr = curr.next;
+        }
+        
+        return dummy.next;
+    }
+}
+\"\"\"""",
 }

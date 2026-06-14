@@ -3,8 +3,261 @@ INFO = {
     'link': 'https://leetcode.com/problems/product-of-array-except-self/',
     'description': 'Return an array where each index is the product of all elements except the one at that index, without using division.',
     'groups': ['Array'],
-    'starter_code': 'def product_except_self(nums: list[int]) -> list[int]:\n    pass',
-    'solutions': '# Optimal: Prefix and Suffix products',
-    'test_code': 'def test_product():\n    assert product_except_self([1, 2, 3, 4]) == [24, 12, 8, 6]',
-    'readme_content': '# Product Of Array Except Self (q06_product_of_array_except_self)\n\n## Overview & Problem Explanation\n\nThe "Product Of Array Except Self" challenge is a classic array manipulation problem that requires you to compute an array where each element `answer[i]` is the product of all elements in the input array `nums` *except* for the element at index `i`. The key constraints are to solve this **without using the division operation** and within **O(N) time complexity**.\n\n**Inputs**:\n*   `nums`: A list (or array) of integers.\n\n**Outputs**:\n*   An array `answer` of the same length as `nums`, where `answer[i]` is the product of all elements in `nums` except `nums[i]`.\n\n**Constraints**:\n*   The length of `nums` (`n`) is between 2 and 10^5 (inclusive).\n*   Each element `nums[i]` is between -30 and 30 (inclusive).\n*   The product of any prefix or suffix of `nums` is guaranteed to fit within a 32-bit integer.\n*   The overall product `answer[i]` for any index `i` is also guaranteed to fit within a 32-bit integer.\n*   You **must not use the division operator**.\n*   Your algorithm must run in **O(N) time complexity**.\n*   The follow-up asks to solve it in **O(1) extra space complexity**, where the output array itself **does not count as extra space**.\n\n**Example 1**:\nInput: `nums = [1, 2, 3, 4]`\nOutput: `[24, 12, 8, 6]`\nExplanation:\n*   `answer[0]` = 2 * 3 * 4 = 24\n*   `answer[1]` = 1 * 3 * 4 = 12\n*   `answer[2]` = 1 * 2 * 4 = 8\n*   `answer[3]` = 1 * 2 * 3 = 6\n\n**Example 2**:\nInput: `nums = [-1, 1, 0, -3, 3]`\nOutput: `[0, 0, 9, 0, 0]`\nExplanation:\n*   `answer[0]` = 1 * 0 * -3 * 3 = 0\n*   `answer[1]` = -1 * 0 * -3 * 3 = 0\n*   `answer[2]` = -1 * 1 * -3 * 3 = 9 (Product of all elements except 0)\n*   `answer[3]` = -1 * 1 * 0 * 3 = 0\n*   `answer[4]` = -1 * 1 * 0 * -3 = 0\n\n**Edge Cases**:\n*   **Zeroes in the array**: If there\'s one zero, `answer[i]` will be 0 for all `i` except the index of the zero, which will be the product of all non-zero elements. If there are two or more zeroes, all elements in the `answer` array will be 0.\n*   **Negative numbers**: Handled naturally by multiplication.\n*   **Smallest array size**: `n` is at least 2.\n\n## Core Concepts & Data Structures/Algorithms\n\nThe primary conceptual insight for solving this problem efficiently and without division is to leverage **prefix products** and **suffix products**.\n\n**Why Prefix and Suffix Products?**\nThe product of all elements except `nums[i]` can be thought of as:\n(Product of all elements to the *left* of `nums[i]`) * (Product of all elements to the *right* of `nums[i]`).\n\n*   **Prefix Product**: For any index `i`, the prefix product is the cumulative product of all elements from the beginning of the array up to `nums[i-1]`.\n*   **Suffix Product**: For any index `i`, the suffix product is the cumulative product of all elements from the end of the array down to `nums[i+1]`.\n\nBy calculating these two separate products for each index and then multiplying them, we effectively exclude `nums[i]` from the total product without ever needing to perform division. This strategy naturally leads to an O(N) time complexity solution.\n\n## Step-by-Step Logic\n\n### Naive/Brute Force Approach (Conceptual)\n\nA straightforward, but inefficient, approach would be to iterate through the array for each index `i`. For each `i`, iterate through the entire array again, multiplying all elements where the index is not `i`.\n\n```python\ndef product_except_self_naive(nums: list[int]) -> list[int]:\n    n = len(nums)\n    answer = [0] * n\n    for i in range(n):\n        current_product = 1\n        for j in range(n):\n            if i != j:\n                current_product *= nums[j]\n        answer[i] = current_product\n    return answer\n```\nThis approach involves nested loops, leading to O(N^2) time complexity, which violates the O(N) requirement.\n\n### Optimal Solution: Prefix and Suffix Products (Two-Pass Approach)\n\nThe optimal solution utilizes two passes over the array to build the `answer` array directly, achieving O(N) time and O(1) extra space (excluding the output array).\n\n**Algorithm Steps**:\n\n1.  **Initialize Result Array**: Create an `answer` array of the same size as `nums`, and initialize all its elements to 1. This array will store our final results.\n    `answer = [1, 1, 1, ..., 1]` (length `n`)\n2.  **First Pass (Calculate Prefix Products)**:\n    *   Iterate through the `nums` array from left to right, starting from index 0.\n    *   Maintain a `prefix_product` variable, initialized to 1.\n    *   For each index `i`:\n        *   Set `answer[i]` to the current `prefix_product`. At this point, `answer[i]` stores the product of all elements *before* `nums[i]`.\n        *   Update `prefix_product` by multiplying it with `nums[i]`.\n    *   After this pass, `answer[i]` contains the product of `nums[0] * ... * nums[i-1]`. For `answer[0]`, it will be 1 (as there are no elements to its left).\n\n    **Dry Run (First Pass) with `nums = [1, 2, 3, 4]`**:\n    *   `n = 4`\n    *   `answer = [1, 1, 1, 1]`\n    *   `prefix_product = 1`\n\n    | `i` | `nums[i]` | `answer` (before update) | `answer[i]` = `prefix_product` | `prefix_product` = `prefix_product` * `nums[i]` | `answer` (after update) |\n    | :-- | :-------- | :----------------------- | :----------------------------- | :---------------------------------------------- | :------------------------ |\n    | 0   | 1         | `[1, 1, 1, 1]`           | `answer[0] = 1`                | `prefix_product = 1 * 1 = 1`                    | `[1, 1, 1, 1]`            |\n    | 1   | 2         | `[1, 1, 1, 1]`           | `answer[1] = 1`                | `prefix_product = 1 * 2 = 2`                    | `[1, 1, 1, 1]`            |\n    | 2   | 3         | `[1, 1, 1, 1]`           | `answer[2] = 2`                | `prefix_product = 2 * 3 = 6`                    | `[1, 1, 2, 1]`            |\n    | 3   | 4         | `[1, 1, 2, 1]`           | `answer[3] = 6`                | `prefix_product = 6 * 4 = 24`                   | `[1, 1, 2, 6]`            |\n\n    After the first pass, `answer` is `[1, 1, 2, 6]`. This represents the prefix products (product of elements to the left).\n\n3.  **Second Pass (Calculate Suffix Products and Final Result)**:\n    *   Iterate through the `nums` array from right to left, starting from index `n-1`.\n    *   Maintain a `suffix_product` variable, initialized to 1.\n    *   For each index `i`:\n        *   Multiply `answer[i]` (which currently holds the prefix product) by the current `suffix_product`. This combines the product of elements to the left and to the right of `nums[i]`.\n        *   Update `suffix_product` by multiplying it with `nums[i]`.\n    *   After this pass, `answer[i]` will hold the desired result.\n\n    **Dry Run (Second Pass) with `nums = [1, 2, 3, 4]` and `answer = [1, 1, 2, 6]` (from first pass)**:\n    *   `n = 4`\n    *   `suffix_product = 1`\n\n    | `i` | `nums[i]` | `answer` (before update) | `answer[i]` = `answer[i]` * `suffix_product` | `suffix_product` = `suffix_product` * `nums[i]` | `answer` (after update) |\n    | :-- | :-------- | :----------------------- | :--------------------------------------------- | :---------------------------------------------- | :------------------------ |\n    | 3   | 4         | `[1, 1, 2, 6]`           | `answer[3] = 6 * 1 = 6`                        | `suffix_product = 1 * 4 = 4`                    | `[1, 1, 2, 6]`            |\n    | 2   | 3         | `[1, 1, 2, 6]`           | `answer[2] = 2 * 4 = 8`                        | `suffix_product = 4 * 3 = 12`                   | `[1, 1, 8, 6]`            |\n    | 1   | 2         | `[1, 1, 8, 6]`           | `answer[1] = 1 * 12 = 12`                      | `suffix_product = 12 * 2 = 24`                  | `[1, 12, 8, 6]`           |\n    | 0   | 1         | `[1, 12, 8, 6]`          | `answer[0] = 1 * 24 = 24`                      | `suffix_product = 24 * 1 = 24`                  | `[24, 12, 8, 6]`          |\n\n    The final `answer` array is `[24, 12, 8, 6]`, which is the correct output.\n\n```python\ndef product_except_self(nums: list[int]) -> list[int]:\n    n = len(nums)\n    answer = [1] * n\n\n    # First pass: Calculate prefix products\n    # answer[i] will contain product of nums[0...i-1]\n    prefix_product = 1\n    for i in range(n):\n        answer[i] = prefix_product\n        prefix_product *= nums[i]\n    \n    # Second pass: Calculate suffix products and combine with prefix products\n    # answer[i] is now product of nums[0...i-1]\n    # We multiply it by product of nums[i+1...n-1]\n    suffix_product = 1\n    for i in range(n - 1, -1, -1):\n        answer[i] *= suffix_product\n        suffix_product *= nums[i]\n        \n    return answer\n```\n\n## Complexity Analysis\n\n| Approach                       | Time Complexity | Space Complexity | Reasoning                                                                                                                                                                                                                                                                                                 |\n| :----------------------------- | :-------------- | :--------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |\n| **Naive (Brute Force)**        | O(N^2)          | O(1)             | The outer loop runs `N` times. The inner loop runs `N` times for each iteration of the outer loop, resulting in `N * N` operations. Only a few extra variables are used. The output array is excluded per problem guidelines.                                                               |\n| **Optimal (Two-Pass)**         | O(N)            | O(1)             | The algorithm performs two separate passes over the input array, each iterating `N` times. This results in `O(N) + O(N) = O(2N)`, which simplifies to `O(N)`. Only a few extra variables (`prefix_product`, `suffix_product`) are used, which is constant space. The output array is excluded per problem guidelines. |\n\n## Real-World Applications\n\nWhile "Product of Array Except Self" might seem like a specific algorithmic puzzle, the underlying patterns (prefix sums/products, dynamic programming, efficient array manipulation) are common in various software systems:\n\n1.  **Data Stream Processing**: In scenarios where you need to calculate aggregates (sums, products, averages) over a sliding window or for specific sub-sections of a continuous data stream, without re-calculating everything from scratch.\n2.  **Financial Analysis**: Calculating rolling products for stock returns, or analyzing performance metrics where the contribution of a specific asset or period needs to be isolated without direct division (e.g., if a value could be zero).\n3.  **Signal Processing/Image Processing**: Computing convolutions or transformations that involve products or sums of neighboring elements, where optimizing calculations for overlapping windows is crucial.\n4.  **Database Query Optimization**: Similar to prefix sums, prefix/suffix products can be conceptually applied in optimizing queries that involve cumulative calculations, allowing pre-computation to speed up subsequent requests.\n5.  **Compiler Optimization**: In certain arithmetic expression evaluations, identifying and optimizing common sub-expressions or patterns that resemble prefix/suffix calculations can lead to more efficient code generation.\n6.  **Cryptography and Hashing (Conceptual)**: While not directly this algorithm, the idea of combining values in a non-linear way (like products) without relying on division might appear in more complex hash functions or cryptographic primitives, where performance and specific mathematical properties are essential.\n7.  **Resource Management/Load Balancing**: In distributed systems, understanding the "impact" of removing a single node or resource can sometimes be modeled using similar logic, where the overall system\'s capacity/throughput is the "product" of individual components.',
+    'starter_code': """def product_except_self(nums: list[int]) -> list[int]:
+    pass""",
+    'solutions': """# --- APPROACH 1: Naive (Brute Force) ---
+# Time Complexity: O(n^2)
+# Space Complexity: O(1)
+# This approach iterates through each element and calculates the product of all other elements using a nested loop.
+def product_except_self_naive(nums: list[int]) -> list[int]:
+    n = len(nums)
+    res = [1] * n
+    for i in range(n):
+        current_product = 1
+        for j in range(n):
+            if i != j:
+                current_product *= nums[j]
+        res[i] = current_product
+    return res
+
+# --- APPROACH 2: Optimal (Prefix and Suffix Products) ---
+# Time Complexity: O(n)
+# Space Complexity: O(1)
+# This approach calculates prefix products in a first pass and suffix products in a second pass. 
+# By reusing the result array to store prefixes and calculating suffixes on the fly, we achieve O(1) extra space.
+# This is optimal because we must visit every element at least once, and we use the minimum possible auxiliary space.
+def product_except_self_optimal(nums: list[int]) -> list[int]:
+    n = len(nums)
+    res = [1] * n
+    
+    # Step 1: Calculate prefix products
+    # res[i] will contain the product of all elements to the left of index i
+    prefix = 1
+    for i in range(n):
+        res[i] = prefix
+        prefix *= nums[i]
+        
+    # Step 2: Calculate suffix products and multiply with prefix products
+    # suffix will maintain the product of all elements to the right of index i
+    suffix = 1
+    for i in range(n - 1, -1, -1):
+        res[i] *= suffix
+        suffix *= nums[i]
+        
+    return res
+
+# --- APPROACH 3: Secondary Language (Java Variant) ---
+\"\"\"
+package arrays_and_hashing;
+
+public class ProductOfArrayExceptSelf {
+    /**
+     * Calculates the product of all elements except the one at the current index.
+     * Time Complexity: O(n)
+     * Space Complexity: O(1) excluding the output array.
+     */
+    public int[] productExceptSelf(int[] nums) {
+        int n = nums.length;
+        int[] res = new int[n];
+        
+        // Left pass: Compute prefix products
+        int prefix = 1;
+        for (int i = 0; i < n; i++) {
+            res[i] = prefix;
+            prefix *= nums[i];
+        }
+        
+        // Right pass: Compute suffix products and multiply
+        int suffix = 1;
+        for (int i = n - 1; i >= 0; i--) {
+            res[i] *= suffix;
+            suffix *= nums[i];
+        }
+        
+        return res;
+    }
+
+    public static void main(String[] args) {
+        ProductOfArrayExceptSelf solver = new ProductOfArrayExceptSelf();
+        int[] input = {1, 2, 3, 4};
+        int[] result = solver.productExceptSelf(input);
+        for (int val : result) {
+            System.out.print(val + " ");
+        }
+        // Expected Output: 24 12 8 6 
+    }
+}
+\"\"\"""",
+    'test_code': """def test_product():
+    assert product_except_self([1, 2, 3, 4]) == [24, 12, 8, 6]""",
+    'readme_content': """# Product Of Array Except Self (q06_product_of_array_except_self)
+
+## Overview & Problem Explanation
+
+The "Product Of Array Except Self" challenge is a classic array manipulation problem that requires you to compute an array where each element `answer[i]` is the product of all elements in the input array `nums` *except* for the element at index `i`. The key constraints are to solve this **without using the division operation** and within **O(N) time complexity**.
+
+**Inputs**:
+*   `nums`: A list (or array) of integers.
+
+**Outputs**:
+*   An array `answer` of the same length as `nums`, where `answer[i]` is the product of all elements in `nums` except `nums[i]`.
+
+**Constraints**:
+*   The length of `nums` (`n`) is between 2 and 10^5 (inclusive).
+*   Each element `nums[i]` is between -30 and 30 (inclusive).
+*   The product of any prefix or suffix of `nums` is guaranteed to fit within a 32-bit integer.
+*   The overall product `answer[i]` for any index `i` is also guaranteed to fit within a 32-bit integer.
+*   You **must not use the division operator**.
+*   Your algorithm must run in **O(N) time complexity**.
+*   The follow-up asks to solve it in **O(1) extra space complexity**, where the output array itself **does not count as extra space**.
+
+**Example 1**:
+Input: `nums = [1, 2, 3, 4]`
+Output: `[24, 12, 8, 6]`
+Explanation:
+*   `answer[0]` = 2 * 3 * 4 = 24
+*   `answer[1]` = 1 * 3 * 4 = 12
+*   `answer[2]` = 1 * 2 * 4 = 8
+*   `answer[3]` = 1 * 2 * 3 = 6
+
+**Example 2**:
+Input: `nums = [-1, 1, 0, -3, 3]`
+Output: `[0, 0, 9, 0, 0]`
+Explanation:
+*   `answer[0]` = 1 * 0 * -3 * 3 = 0
+*   `answer[1]` = -1 * 0 * -3 * 3 = 0
+*   `answer[2]` = -1 * 1 * -3 * 3 = 9 (Product of all elements except 0)
+*   `answer[3]` = -1 * 1 * 0 * 3 = 0
+*   `answer[4]` = -1 * 1 * 0 * -3 = 0
+
+**Edge Cases**:
+*   **Zeroes in the array**: If there's one zero, `answer[i]` will be 0 for all `i` except the index of the zero, which will be the product of all non-zero elements. If there are two or more zeroes, all elements in the `answer` array will be 0.
+*   **Negative numbers**: Handled naturally by multiplication.
+*   **Smallest array size**: `n` is at least 2.
+
+## Core Concepts & Data Structures/Algorithms
+
+The primary conceptual insight for solving this problem efficiently and without division is to leverage **prefix products** and **suffix products**.
+
+**Why Prefix and Suffix Products?**
+The product of all elements except `nums[i]` can be thought of as:
+(Product of all elements to the *left* of `nums[i]`) * (Product of all elements to the *right* of `nums[i]`).
+
+*   **Prefix Product**: For any index `i`, the prefix product is the cumulative product of all elements from the beginning of the array up to `nums[i-1]`.
+*   **Suffix Product**: For any index `i`, the suffix product is the cumulative product of all elements from the end of the array down to `nums[i+1]`.
+
+By calculating these two separate products for each index and then multiplying them, we effectively exclude `nums[i]` from the total product without ever needing to perform division. This strategy naturally leads to an O(N) time complexity solution.
+
+## Step-by-Step Logic
+
+### Naive/Brute Force Approach (Conceptual)
+
+A straightforward, but inefficient, approach would be to iterate through the array for each index `i`. For each `i`, iterate through the entire array again, multiplying all elements where the index is not `i`.
+
+```python
+def product_except_self_naive(nums: list[int]) -> list[int]:
+    n = len(nums)
+    answer = [0] * n
+    for i in range(n):
+        current_product = 1
+        for j in range(n):
+            if i != j:
+                current_product *= nums[j]
+        answer[i] = current_product
+    return answer
+```
+This approach involves nested loops, leading to O(N^2) time complexity, which violates the O(N) requirement.
+
+### Optimal Solution: Prefix and Suffix Products (Two-Pass Approach)
+
+The optimal solution utilizes two passes over the array to build the `answer` array directly, achieving O(N) time and O(1) extra space (excluding the output array).
+
+**Algorithm Steps**:
+
+1.  **Initialize Result Array**: Create an `answer` array of the same size as `nums`, and initialize all its elements to 1. This array will store our final results.
+    `answer = [1, 1, 1, ..., 1]` (length `n`)
+2.  **First Pass (Calculate Prefix Products)**:
+    *   Iterate through the `nums` array from left to right, starting from index 0.
+    *   Maintain a `prefix_product` variable, initialized to 1.
+    *   For each index `i`:
+        *   Set `answer[i]` to the current `prefix_product`. At this point, `answer[i]` stores the product of all elements *before* `nums[i]`.
+        *   Update `prefix_product` by multiplying it with `nums[i]`.
+    *   After this pass, `answer[i]` contains the product of `nums[0] * ... * nums[i-1]`. For `answer[0]`, it will be 1 (as there are no elements to its left).
+
+    **Dry Run (First Pass) with `nums = [1, 2, 3, 4]`**:
+    *   `n = 4`
+    *   `answer = [1, 1, 1, 1]`
+    *   `prefix_product = 1`
+
+    | `i` | `nums[i]` | `answer` (before update) | `answer[i]` = `prefix_product` | `prefix_product` = `prefix_product` * `nums[i]` | `answer` (after update) |
+    | :-- | :-------- | :----------------------- | :----------------------------- | :---------------------------------------------- | :------------------------ |
+    | 0   | 1         | `[1, 1, 1, 1]`           | `answer[0] = 1`                | `prefix_product = 1 * 1 = 1`                    | `[1, 1, 1, 1]`            |
+    | 1   | 2         | `[1, 1, 1, 1]`           | `answer[1] = 1`                | `prefix_product = 1 * 2 = 2`                    | `[1, 1, 1, 1]`            |
+    | 2   | 3         | `[1, 1, 1, 1]`           | `answer[2] = 2`                | `prefix_product = 2 * 3 = 6`                    | `[1, 1, 2, 1]`            |
+    | 3   | 4         | `[1, 1, 2, 1]`           | `answer[3] = 6`                | `prefix_product = 6 * 4 = 24`                   | `[1, 1, 2, 6]`            |
+
+    After the first pass, `answer` is `[1, 1, 2, 6]`. This represents the prefix products (product of elements to the left).
+
+3.  **Second Pass (Calculate Suffix Products and Final Result)**:
+    *   Iterate through the `nums` array from right to left, starting from index `n-1`.
+    *   Maintain a `suffix_product` variable, initialized to 1.
+    *   For each index `i`:
+        *   Multiply `answer[i]` (which currently holds the prefix product) by the current `suffix_product`. This combines the product of elements to the left and to the right of `nums[i]`.
+        *   Update `suffix_product` by multiplying it with `nums[i]`.
+    *   After this pass, `answer[i]` will hold the desired result.
+
+    **Dry Run (Second Pass) with `nums = [1, 2, 3, 4]` and `answer = [1, 1, 2, 6]` (from first pass)**:
+    *   `n = 4`
+    *   `suffix_product = 1`
+
+    | `i` | `nums[i]` | `answer` (before update) | `answer[i]` = `answer[i]` * `suffix_product` | `suffix_product` = `suffix_product` * `nums[i]` | `answer` (after update) |
+    | :-- | :-------- | :----------------------- | :--------------------------------------------- | :---------------------------------------------- | :------------------------ |
+    | 3   | 4         | `[1, 1, 2, 6]`           | `answer[3] = 6 * 1 = 6`                        | `suffix_product = 1 * 4 = 4`                    | `[1, 1, 2, 6]`            |
+    | 2   | 3         | `[1, 1, 2, 6]`           | `answer[2] = 2 * 4 = 8`                        | `suffix_product = 4 * 3 = 12`                   | `[1, 1, 8, 6]`            |
+    | 1   | 2         | `[1, 1, 8, 6]`           | `answer[1] = 1 * 12 = 12`                      | `suffix_product = 12 * 2 = 24`                  | `[1, 12, 8, 6]`           |
+    | 0   | 1         | `[1, 12, 8, 6]`          | `answer[0] = 1 * 24 = 24`                      | `suffix_product = 24 * 1 = 24`                  | `[24, 12, 8, 6]`          |
+
+    The final `answer` array is `[24, 12, 8, 6]`, which is the correct output.
+
+```python
+def product_except_self(nums: list[int]) -> list[int]:
+    n = len(nums)
+    answer = [1] * n
+
+    # First pass: Calculate prefix products
+    # answer[i] will contain product of nums[0...i-1]
+    prefix_product = 1
+    for i in range(n):
+        answer[i] = prefix_product
+        prefix_product *= nums[i]
+    
+    # Second pass: Calculate suffix products and combine with prefix products
+    # answer[i] is now product of nums[0...i-1]
+    # We multiply it by product of nums[i+1...n-1]
+    suffix_product = 1
+    for i in range(n - 1, -1, -1):
+        answer[i] *= suffix_product
+        suffix_product *= nums[i]
+        
+    return answer
+```
+
+## Complexity Analysis
+
+| Approach                       | Time Complexity | Space Complexity | Reasoning                                                                                                                                                                                                                                                                                                 |
+| :----------------------------- | :-------------- | :--------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Naive (Brute Force)**        | O(N^2)          | O(1)             | The outer loop runs `N` times. The inner loop runs `N` times for each iteration of the outer loop, resulting in `N * N` operations. Only a few extra variables are used. The output array is excluded per problem guidelines.                                                               |
+| **Optimal (Two-Pass)**         | O(N)            | O(1)             | The algorithm performs two separate passes over the input array, each iterating `N` times. This results in `O(N) + O(N) = O(2N)`, which simplifies to `O(N)`. Only a few extra variables (`prefix_product`, `suffix_product`) are used, which is constant space. The output array is excluded per problem guidelines. |
+
+## Real-World Applications
+
+While "Product of Array Except Self" might seem like a specific algorithmic puzzle, the underlying patterns (prefix sums/products, dynamic programming, efficient array manipulation) are common in various software systems:
+
+1.  **Data Stream Processing**: In scenarios where you need to calculate aggregates (sums, products, averages) over a sliding window or for specific sub-sections of a continuous data stream, without re-calculating everything from scratch.
+2.  **Financial Analysis**: Calculating rolling products for stock returns, or analyzing performance metrics where the contribution of a specific asset or period needs to be isolated without direct division (e.g., if a value could be zero).
+3.  **Signal Processing/Image Processing**: Computing convolutions or transformations that involve products or sums of neighboring elements, where optimizing calculations for overlapping windows is crucial.
+4.  **Database Query Optimization**: Similar to prefix sums, prefix/suffix products can be conceptually applied in optimizing queries that involve cumulative calculations, allowing pre-computation to speed up subsequent requests.
+5.  **Compiler Optimization**: In certain arithmetic expression evaluations, identifying and optimizing common sub-expressions or patterns that resemble prefix/suffix calculations can lead to more efficient code generation.
+6.  **Cryptography and Hashing (Conceptual)**: While not directly this algorithm, the idea of combining values in a non-linear way (like products) without relying on division might appear in more complex hash functions or cryptographic primitives, where performance and specific mathematical properties are essential.
+7.  **Resource Management/Load Balancing**: In distributed systems, understanding the "impact" of removing a single node or resource can sometimes be modeled using similar logic, where the overall system's capacity/throughput is the "product" of individual components.""",
 }

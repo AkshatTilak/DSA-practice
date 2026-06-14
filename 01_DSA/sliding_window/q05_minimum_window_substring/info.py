@@ -3,8 +3,310 @@ INFO = {
     'link': 'https://leetcode.com/problems/minimum-window-substring/',
     'description': 'Find the minimum window in s containing all characters of t.',
     'groups': ['String', 'Sliding Window', 'Hashing'],
-    'starter_code': 'def min_window(s: str, t: str) -> str:\n    pass',
-    'solutions': '# Optimal: Dynamic window shrinking to check coverage',
-    'test_code': "def test_min_window():\n    assert min_window('ADOBECODEBANC', 'ABC') == 'BANC'",
-    'readme_content': '# Minimum Window Substring\n\n## 1. Overview & Problem Explanation\n\nThe **Minimum Window Substring** problem is a classic "Hard" challenge that tests your ability to manage two pointers and frequency tracking. The goal is to find the shortest contiguous substring in a string `s` that contains all the characters of another string `t`, including duplicate characters.\n\n### Problem Statement\nGiven two strings `s` and `t` of lengths `m` and `n` respectively, return the minimum window substring of `s` such that every character in `t` (including duplicates) is included in the window. If there is no such substring, return the empty string `""`.\n\n### Input / Output Example\n- **Input**: `s = "ADOBECODEBANC"`, `t = "ABC"`\n- **Output**: `"BANC"`\n- **Explanation**: The substring `"BANC"` contains \'A\', \'B\', and \'C\' and is the shortest such window (length 4). Other windows like `"ADOBEC"` also contain all characters but are longer.\n\n### Constraints & Edge Cases\n- **Time/Space Constraints**: $1 \\le s.length, t.length \\le 10^5$. A brute force $O(N^2)$ or $O(N^3)$ approach will result in a Time Limit Exceeded (TLE) error.\n- **Case Sensitivity**: Usually, characters are case-sensitive (\'a\' $\\neq$ \'A\').\n- **Duplicates**: If `t = "AAB"`, the window must contain at least two \'A\'s and one \'B\'.\n- **No Solution**: If `s` is shorter than `t` or simply doesn\'t contain all characters of `t`, return `""`.\n\n---\n\n## 2. Core Concepts & Data Structures\n\n### The Sliding Window Pattern\nThe most efficient way to solve this is using a **Variable-Size Sliding Window**. Unlike a fixed-size window, a variable window expands to satisfy a condition and shrinks to optimize the result.\n\n### Why Sliding Window?\nA brute force approach would check every possible substring. However, we can observe that if a window from index `i` to `j` is valid, any window from `i` to `j+1` is also valid. Conversely, if we have a valid window, we can try to remove characters from the left to see if a smaller valid window exists. This "expand-then-shrink" behavior is the essence of the sliding window.\n\n### Hash Maps (Frequency Counters)\nSince we need to track the requirements of `t` and the current state of the window in `s`, we use **Hash Maps** (or frequency arrays):\n1. **`target_count`**: Stores the required frequency of each character in `t`.\n2. **`window_count`**: Stores the frequency of characters currently inside our sliding window.\n\n### The "Have" vs "Need" Variable\nTo avoid iterating over the entire hash map every time we move the pointer (which would add an $O(26)$ or $O(52)$ overhead), we use a counter:\n- **`need`**: The number of *unique* characters in `t` that must be present with the required frequency.\n- **`have`**: The number of *unique* characters currently in the window that meet the required frequency from `t`.\n\n---\n\n## 3. Step-by-Step Logic\n\n### Naive Approach (Brute Force)\n1. Generate all possible substrings of `s`.\n2. For each substring, count its characters and compare them with `t`.\n3. Keep track of the smallest substring that satisfies the condition.\n- **Complexity**: $O(S^3)$ — extremely inefficient.\n\n### Optimal Approach (Sliding Window)\n\n#### The Algorithm\n1. **Initialization**: \n   - Create a `target_count` map for all characters in `t`.\n   - Initialize `left` and `right` pointers at 0.\n   - Initialize `have = 0`, `need = len(target_count)`.\n   - Keep track of the `min_len` (start with infinity) and the `res` coordinates.\n\n2. **Expansion Phase**:\n   - Move the `right` pointer to the right, adding characters to the `window_count`.\n   - If the current character\'s count in `window_count` equals its count in `target_count`, increment `have`.\n\n3. **Contraction Phase**:\n   - While `have == need` (the window is valid):\n     - Update `min_len` and store the current `left` and `right` indices if the current window is smaller than the previous minimum.\n     - Remove the character at the `left` pointer from `window_count`.\n     - If removing that character causes its count to drop below the required frequency in `target_count`, decrement `have`.\n     - Increment the `left` pointer to shrink the window.\n\n4. **Termination**:\n   - Once `right` reaches the end of `s`, return the substring using the stored coordinates.\n\n#### Dry Run Trace\n`s = "ADOBECODEBANC"`, `t = "ABC"`\n- `target_count = {A:1, B:1, C:1}`, `need = 3`\n- `right` moves to index 5 (`"ADOBEC"`): `window_count` has A, B, and C. `have = 3`.\n- **Shrink**: `left` moves from 0 to 1. `"DOBEC"` is invalid (`have = 2`).\n- `right` moves to index 10 (`"DOBECODEBA"`): Valid.\n- **Shrink**: `left` moves until `"CODEBA"` (valid), then `"ODEBA"` (invalid).\n- `right` moves to index 12 (`"ODEBANC"`): Valid.\n- **Shrink**: `left` moves until `"BANC"`. This is length 4, the smallest found.\n\n### Optimal Implementation\n\n```python\nfrom collections import Counter\n\ndef min_window(s: str, t: str) -> str:\n    if not t or not s:\n        return ""\n\n    # Dictionary which keeps a count of all the unique characters in t.\n    target_count = Counter(t)\n    # Number of unique characters in t, which need to be present in the desired window.\n    need = len(target_count)\n    \n    # left and right pointer\n    l, r = 0, 0\n    # have is used to keep track of how many unique characters in t \n    # are present in the current window in its desired frequency.\n    have = 0\n    # Dictionary which keeps a count of all the unique characters in the current window.\n    window_count = {}\n    \n    # ans tuple of (window length, left, right)\n    ans = float("inf"), None, None\n\n    while r < len(s):\n        # Add one character from the right to the window\n        char = s[r]\n        window_count[char] = window_count.get(char, 0) + 1\n\n        # If the frequency of the current character added equals to the \n        # desired count in t then increment the have count.\n        if char in target_count and window_count[char] == target_count[char]:\n            have += 1\n\n        # Try and contract the window till the point where it ceases to be \'desirable\'.\n        while have == need:\n            # Update the smallest window found so far\n            if (r - l + 1) < ans[0]:\n                ans = (r - l + 1, l, r)\n\n            # The character at the position pointed by the `left` pointer is no longer a part of the window.\n            char_l = s[l]\n            window_count[char_l] = window_count[char_l] - 1\n            if char_l in target_count and window_count[char_l] < target_count[char_l]:\n                have -= 1\n            \n            # Move the left pointer ahead, this helps in looking for a new window.\n            l += 1    \n\n        # Keep expanding the window once we are done contracting.\n        r += 1    \n        \n    return "" if ans[0] == float("inf") else s[ans[1] : ans[2] + 1]\n```\n\n---\n\n## 4. Complexity Analysis\n\n| Approach | Time Complexity | Space Complexity | Reasoning |\n| :--- | :--- | :--- | :--- |\n| **Brute Force** | $O(S^3)$ | $O(T)$ | Iterating all substrings $O(S^2)$ and checking each against $T$. |\n| **Sliding Window** | $O(S + T)$ | $O(K)$ | Each pointer (`l` and `r`) visits each character at most once. $K$ is the size of the character set. |\n\n- **Time Complexity $O(S + T)$**: We process string `t` once to build the target map $O(T)$. Then, the `right` pointer traverses `s` once, and the `left` pointer traverses `s` once. Even though there is a nested `while` loop, each index is visited a maximum of two times.\n- **Space Complexity $O(K)$**: We store frequencies in hash maps. The maximum size of the maps is limited by the number of unique characters in the alphabet (e.g., 52 for upper/lowercase English letters), which is constant $O(1)$ or $O(K)$ relative to the input size.\n\n---\n\n## 5. Real-World Applications\n\nThe Minimum Window Substring pattern is widely used in systems that require **pattern matching within streams of data**:\n\n1. **Bioinformatics (Genomics)**: Finding the shortest segment of a DNA sequence that contains a specific set of genetic markers or nucleotides.\n2. **Network Traffic Analysis**: Detecting the smallest window of packets that contains a specific sequence of flags or signatures to identify a cyber attack (Intrusion Detection Systems).\n3. **Log Analysis**: In large-scale distributed systems, searching for the smallest time window in logs that contains all the events required to diagnose a specific race condition or failure.\n4. **Search Normalization**: Finding a compact segment of text in a document that contains all the keywords of a user\'s query to provide a concise "snippet" in search engine results.',
+    'starter_code': """def min_window(s: str, t: str) -> str:
+    pass""",
+    'solutions': """# --- APPROACH 1: Naive (Brute Force) ---
+# Time Complexity: O(n^3) where n is the length of s. We iterate through all possible substrings (n^2) and for each, we check character counts (n).
+# Space Complexity: O(k) where k is the number of unique characters in t.
+# This approach checks every possible substring of s to see if it contains all the characters of t, keeping track of the minimum length found.
+from collections import Counter
+
+def min_window_naive(s: str, t: str) -> str:
+    if not t or not s:
+        return ""
+    
+    t_count = Counter(t)
+    min_len = float('inf')
+    result = ""
+    
+    for i in range(len(s)):
+        for j in range(i, len(s)):
+            substring = s[i:j+1]
+            sub_count = Counter(substring)
+            
+            is_valid = True
+            for char, count in t_count.items():
+                if sub_count[char] < count:
+                    is_valid = False
+                    break
+            
+            if is_valid:
+                if len(substring) < min_len:
+                    min_len = len(substring)
+                    result = substring
+                    
+    return result
+
+# --- APPROACH 2: Optimal (Sliding Window) ---
+# Time Complexity: O(s + t) where s and t are lengths of the respective strings. Each character is visited at most twice (once by right pointer, once by left).
+# Space Complexity: O(k) where k is the number of unique characters in s and t.
+# This approach uses two pointers to maintain a sliding window. We expand the right pointer to find a valid window and then contract the left pointer to minimize the window size. 
+# This is optimal because it avoids redundant checks and processes the string in linear time.
+from collections import Counter
+
+def min_window_optimal(s: str, t: str) -> str:
+    if not t or not s:
+        return ""
+
+    # Frequency map of characters required from t
+    dict_t = Counter(t)
+    required = len(dict_t)
+    
+    # Window tracking
+    l, r = 0, 0
+    # formed is used to keep track of how many unique characters in t are present in the current window in desired frequency.
+    formed = 0
+    window_counts = {}
+    
+    # ans tuple of (window length, left, right)
+    ans = float("inf"), None, None
+    
+    while r < len(s):
+        char = s[r]
+        window_counts[char] = window_counts.get(char, 0) + 1
+        
+        # If the frequency of the current character matches the desired count in t
+        if char in dict_t and window_counts[char] == dict_t[char]:
+            formed += 1
+            
+        # Try and contract the window till the point where it ceases to be 'desirable'.
+        while l <= r and formed == required:
+            char = s[l]
+            
+            # Save the smallest window until now.
+            if r - l + 1 < ans[0]:
+                ans = (r - l + 1, l, r)
+            
+            # The character at the position pointed by the `left` pointer is no longer a part of the window.
+            window_counts[char] -= 1
+            if char in dict_t and window_counts[char] < dict_t[char]:
+                formed -= 1
+                
+            l += 1
+            
+        r += 1
+        
+    return "" if ans[0] == float("inf") else s[ans[1] : ans[2] + 1]
+
+# Alias to match starter code requirement
+def min_window(s: str, t: str) -> str:
+    return min_window_optimal(s, t)
+
+# --- APPROACH 3: Secondary Language (Java Variant) ---
+\"\"\"
+package sliding_window;
+
+import java.util.*;
+
+public class MinimumWindowSubstring {
+    public String minWindow(String s, String t) {
+        if (s == null || t == null || s.length() < t.length()) {
+            return "";
+        }
+
+        Map<Character, Integer> dictT = new HashMap<>();
+        for (char c : t.toCharArray()) {
+            dictT.put(c, dictT.getOrDefault(c, 0) + 1);
+        }
+
+        int required = dictT.size();
+        int l = 0, r = 0;
+        int formed = 0;
+        Map<Character, Integer> windowCounts = new HashMap<>();
+
+        int minLen = Integer.MAX_VALUE;
+        int minLeft = 0;
+
+        while (r < s.length()) {
+            char c = s.charAt(r);
+            windowCounts.put(c, windowCounts.getOrDefault(c, 0) + 1);
+
+            if (dictT.containsKey(c) && windowCounts.get(c).equals(dictT.get(c))) {
+                formed++;
+            }
+
+            while (l <= r && formed == required) {
+                char leftChar = s.charAt(l);
+
+                if (r - l + 1 < minLen) {
+                    minLen = r - l + 1;
+                    minLeft = l;
+                }
+
+                windowCounts.put(leftChar, windowCounts.get(leftChar) - 1);
+                if (dictT.containsKey(leftChar) && windowCounts.get(leftChar) < dictT.get(leftChar)) {
+                    formed--;
+                }
+                l++;
+            }
+            r++;
+        }
+
+        return minLen == Integer.MAX_VALUE ? "" : s.substring(minLeft, minLeft + minLen);
+    }
+}
+\"\"\"""",
+    'test_code': """def test_min_window():
+    assert min_window('ADOBECODEBANC', 'ABC') == 'BANC'""",
+    'readme_content': """# Minimum Window Substring
+
+## 1. Overview & Problem Explanation
+
+The **Minimum Window Substring** problem is a classic "Hard" challenge that tests your ability to manage two pointers and frequency tracking. The goal is to find the shortest contiguous substring in a string `s` that contains all the characters of another string `t`, including duplicate characters.
+
+### Problem Statement
+Given two strings `s` and `t` of lengths `m` and `n` respectively, return the minimum window substring of `s` such that every character in `t` (including duplicates) is included in the window. If there is no such substring, return the empty string `""`.
+
+### Input / Output Example
+- **Input**: `s = "ADOBECODEBANC"`, `t = "ABC"`
+- **Output**: `"BANC"`
+- **Explanation**: The substring `"BANC"` contains 'A', 'B', and 'C' and is the shortest such window (length 4). Other windows like `"ADOBEC"` also contain all characters but are longer.
+
+### Constraints & Edge Cases
+- **Time/Space Constraints**: $1 \le s.length, t.length \le 10^5$. A brute force $O(N^2)$ or $O(N^3)$ approach will result in a Time Limit Exceeded (TLE) error.
+- **Case Sensitivity**: Usually, characters are case-sensitive ('a' $\neq$ 'A').
+- **Duplicates**: If `t = "AAB"`, the window must contain at least two 'A's and one 'B'.
+- **No Solution**: If `s` is shorter than `t` or simply doesn't contain all characters of `t`, return `""`.
+
+---
+
+## 2. Core Concepts & Data Structures
+
+### The Sliding Window Pattern
+The most efficient way to solve this is using a **Variable-Size Sliding Window**. Unlike a fixed-size window, a variable window expands to satisfy a condition and shrinks to optimize the result.
+
+### Why Sliding Window?
+A brute force approach would check every possible substring. However, we can observe that if a window from index `i` to `j` is valid, any window from `i` to `j+1` is also valid. Conversely, if we have a valid window, we can try to remove characters from the left to see if a smaller valid window exists. This "expand-then-shrink" behavior is the essence of the sliding window.
+
+### Hash Maps (Frequency Counters)
+Since we need to track the requirements of `t` and the current state of the window in `s`, we use **Hash Maps** (or frequency arrays):
+1. **`target_count`**: Stores the required frequency of each character in `t`.
+2. **`window_count`**: Stores the frequency of characters currently inside our sliding window.
+
+### The "Have" vs "Need" Variable
+To avoid iterating over the entire hash map every time we move the pointer (which would add an $O(26)$ or $O(52)$ overhead), we use a counter:
+- **`need`**: The number of *unique* characters in `t` that must be present with the required frequency.
+- **`have`**: The number of *unique* characters currently in the window that meet the required frequency from `t`.
+
+---
+
+## 3. Step-by-Step Logic
+
+### Naive Approach (Brute Force)
+1. Generate all possible substrings of `s`.
+2. For each substring, count its characters and compare them with `t`.
+3. Keep track of the smallest substring that satisfies the condition.
+- **Complexity**: $O(S^3)$ — extremely inefficient.
+
+### Optimal Approach (Sliding Window)
+
+#### The Algorithm
+1. **Initialization**: 
+   - Create a `target_count` map for all characters in `t`.
+   - Initialize `left` and `right` pointers at 0.
+   - Initialize `have = 0`, `need = len(target_count)`.
+   - Keep track of the `min_len` (start with infinity) and the `res` coordinates.
+
+2. **Expansion Phase**:
+   - Move the `right` pointer to the right, adding characters to the `window_count`.
+   - If the current character's count in `window_count` equals its count in `target_count`, increment `have`.
+
+3. **Contraction Phase**:
+   - While `have == need` (the window is valid):
+     - Update `min_len` and store the current `left` and `right` indices if the current window is smaller than the previous minimum.
+     - Remove the character at the `left` pointer from `window_count`.
+     - If removing that character causes its count to drop below the required frequency in `target_count`, decrement `have`.
+     - Increment the `left` pointer to shrink the window.
+
+4. **Termination**:
+   - Once `right` reaches the end of `s`, return the substring using the stored coordinates.
+
+#### Dry Run Trace
+`s = "ADOBECODEBANC"`, `t = "ABC"`
+- `target_count = {A:1, B:1, C:1}`, `need = 3`
+- `right` moves to index 5 (`"ADOBEC"`): `window_count` has A, B, and C. `have = 3`.
+- **Shrink**: `left` moves from 0 to 1. `"DOBEC"` is invalid (`have = 2`).
+- `right` moves to index 10 (`"DOBECODEBA"`): Valid.
+- **Shrink**: `left` moves until `"CODEBA"` (valid), then `"ODEBA"` (invalid).
+- `right` moves to index 12 (`"ODEBANC"`): Valid.
+- **Shrink**: `left` moves until `"BANC"`. This is length 4, the smallest found.
+
+### Optimal Implementation
+
+```python
+from collections import Counter
+
+def min_window(s: str, t: str) -> str:
+    if not t or not s:
+        return ""
+
+    # Dictionary which keeps a count of all the unique characters in t.
+    target_count = Counter(t)
+    # Number of unique characters in t, which need to be present in the desired window.
+    need = len(target_count)
+    
+    # left and right pointer
+    l, r = 0, 0
+    # have is used to keep track of how many unique characters in t 
+    # are present in the current window in its desired frequency.
+    have = 0
+    # Dictionary which keeps a count of all the unique characters in the current window.
+    window_count = {}
+    
+    # ans tuple of (window length, left, right)
+    ans = float("inf"), None, None
+
+    while r < len(s):
+        # Add one character from the right to the window
+        char = s[r]
+        window_count[char] = window_count.get(char, 0) + 1
+
+        # If the frequency of the current character added equals to the 
+        # desired count in t then increment the have count.
+        if char in target_count and window_count[char] == target_count[char]:
+            have += 1
+
+        # Try and contract the window till the point where it ceases to be 'desirable'.
+        while have == need:
+            # Update the smallest window found so far
+            if (r - l + 1) < ans[0]:
+                ans = (r - l + 1, l, r)
+
+            # The character at the position pointed by the `left` pointer is no longer a part of the window.
+            char_l = s[l]
+            window_count[char_l] = window_count[char_l] - 1
+            if char_l in target_count and window_count[char_l] < target_count[char_l]:
+                have -= 1
+            
+            # Move the left pointer ahead, this helps in looking for a new window.
+            l += 1    
+
+        # Keep expanding the window once we are done contracting.
+        r += 1    
+        
+    return "" if ans[0] == float("inf") else s[ans[1] : ans[2] + 1]
+```
+
+---
+
+## 4. Complexity Analysis
+
+| Approach | Time Complexity | Space Complexity | Reasoning |
+| :--- | :--- | :--- | :--- |
+| **Brute Force** | $O(S^3)$ | $O(T)$ | Iterating all substrings $O(S^2)$ and checking each against $T$. |
+| **Sliding Window** | $O(S + T)$ | $O(K)$ | Each pointer (`l` and `r`) visits each character at most once. $K$ is the size of the character set. |
+
+- **Time Complexity $O(S + T)$**: We process string `t` once to build the target map $O(T)$. Then, the `right` pointer traverses `s` once, and the `left` pointer traverses `s` once. Even though there is a nested `while` loop, each index is visited a maximum of two times.
+- **Space Complexity $O(K)$**: We store frequencies in hash maps. The maximum size of the maps is limited by the number of unique characters in the alphabet (e.g., 52 for upper/lowercase English letters), which is constant $O(1)$ or $O(K)$ relative to the input size.
+
+---
+
+## 5. Real-World Applications
+
+The Minimum Window Substring pattern is widely used in systems that require **pattern matching within streams of data**:
+
+1. **Bioinformatics (Genomics)**: Finding the shortest segment of a DNA sequence that contains a specific set of genetic markers or nucleotides.
+2. **Network Traffic Analysis**: Detecting the smallest window of packets that contains a specific sequence of flags or signatures to identify a cyber attack (Intrusion Detection Systems).
+3. **Log Analysis**: In large-scale distributed systems, searching for the smallest time window in logs that contains all the events required to diagnose a specific race condition or failure.
+4. **Search Normalization**: Finding a compact segment of text in a document that contains all the keywords of a user's query to provide a concise "snippet" in search engine results.""",
 }

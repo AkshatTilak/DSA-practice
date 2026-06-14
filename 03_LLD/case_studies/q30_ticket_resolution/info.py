@@ -3,5 +3,453 @@ INFO = {
     'type': 'design',
     'description': 'Design Ticket Resolution System (Support/Tickets).',
     'groups': ['OOP Case Studies'],
-    'readme_content': '# Ticket Resolution System LLD\n\nA Ticket Resolution System (or Help Desk System) is a critical piece of enterprise infrastructure used to manage customer grievances, technical bugs, and service requests. The goal is to ensure that every request is captured, categorized, assigned to the right expert, and resolved within a specified timeframe (SLA).\n\n## 1. Overview & System Requirements\n\n### Core Actors\n- **Customer**: The user who creates a ticket to report an issue.\n- **Support Agent**: The technical staff member who works on the ticket to provide a resolution.\n- **Admin/Manager**: The user who manages agents, departments, and monitors system-wide performance.\n\n### Functional Requirements\n- **Ticket Creation**: Customers can create tickets with a title, description, priority, and category.\n- **Ticket Assignment**: Tickets must be assigned to available agents. This can be done via:\n    - **Manual Assignment**: Admin assigns a specific agent.\n    - **Automatic Assignment**: System assigns based on a strategy (e.g., Round Robin or Least Loaded).\n- **Lifecycle Management**: Tickets transition through states: `Open` $\\rightarrow$ `InProgress` $\\rightarrow$ `Resolved` $\\rightarrow$ `Closed`.\n- **Priority Handling**: High-priority tickets should be surfaced or handled first.\n- **Notifications**: Users should be notified when a ticket is assigned or its status changes.\n- **Categorization**: Tickets are grouped by departments (e.g., Billing, Technical, Sales).\n\n---\n\n## 2. Design Principles & Patterns\n\n### SOLID Principles Applied\n- **Single Responsibility Principle (SRP)**: We separate the `Ticket` (data), `TicketManager` (orchestration), and `AssignmentStrategy` (logic).\n- **Open/Closed Principle (OCP)**: By using the **Strategy Pattern** for ticket assignment, we can add new assignment algorithms (e.g., Skill-based routing) without modifying the existing `TicketManager` code.\n- **Dependency Inversion Principle (DIP)**: The `TicketManager` depends on the `AssignmentStrategy` interface, not concrete implementations.\n\n### Design Patterns Used\n| Pattern | Purpose | Why it solves the problem |\n| :--- | :--- | :--- |\n| **Strategy Pattern** | Assignment Logic | Decouples the "who gets the ticket" logic from the "how to create a ticket" logic. |\n| **Observer Pattern** | Notifications | Allows multiple notification channels (Email, SMS, Push) to react to status changes without coupling the Ticket class to notification services. |\n| **Factory Pattern** | Ticket Creation | Simplifies the creation of different ticket types (e.g., Bug vs. Feature Request) if specific defaults are needed. |\n| **Singleton Pattern** | TicketSystem | Ensures a single point of truth for managing the global state of all active tickets. |\n\n---\n\n## 3. Class Structure & Relationships\n\n### Class Diagram (ASCII)\n```text\n+-------------------+        +-----------------------+        +-----------------------+\n|      User         |<-------|     TicketManager     |<-------|   AssignmentStrategy  |\n+-------------------+        +-----------------------+        +-----------------------+\n| - userId          |        | - tickets: Map        |        | + assign(ticket, agents)|\n| - name            |        | - agents: List        |        +-----------^-----------+\n+--------^----------+        +-----------+-----------+                    |\n         |                               |                        +-------+-------+\n         +-------------------------------+                        |               |\n         |                               |               +----------------+ +----------------+\n +-------+-------+               +-------v-------+       | RoundRobinStrat | | LeastLoadedStrat|\n | Customer      |               |    Ticket     |       +----------------+ +----------------+\n +---------------+               +---------------+\n | + createTicket|               | - ticketId    |\n +---------------+               | - status      |\n                                 | - priority    |\n                                 | - assignee    |\n                                 +---------------+\n```\n\n### Relationships\n- **Composition**: `TicketManager` contains a collection of `Ticket` objects.\n- **Aggregation**: `Ticket` is associated with a `User` (creator) and an `Agent` (assignee).\n- **Strategy**: `TicketManager` holds a reference to an `AssignmentStrategy` interface.\n\n---\n\n## 4. Step-by-Step Logic & Code Walkthrough\n\n### Implementation\n\n```python\nfrom enum import Enum\nfrom abc import ABC, abstractmethod\nfrom typing import List, Dict, Optional\nfrom collections import deque\n\n# --- Enums ---\nclass TicketStatus(Enum):\n    OPEN = "Open"\n    IN_PROGRESS = "In Progress"\n    RESOLVED = "Resolved"\n    CLOSED = "Closed"\n\nclass TicketPriority(Enum):\n    LOW = 1\n    MEDIUM = 2\n    HIGH = 3\n    URGENT = 4\n\n# --- Core Entities ---\nclass User:\n    def __init__(self, user_id: str, name: str, email: str):\n        self.user_id = user_id\n        self.name = name\n        self.email = email\n\nclass Agent(User):\n    def __init__(self, user_id: str, name: str, email: str, expertise: str):\n        super().__init__(user_id, name, email)\n        self.expertise = expertise\n        self.assigned_tickets_count = 0\n\n    def increment_load(self):\n        self.assigned_tickets_count += 1\n\n    def decrement_load(self):\n        self.assigned_tickets_count -= 1\n\nclass Ticket:\n    def __init__(self, ticket_id: str, title: str, description: str, \n                 priority: TicketPriority, creator: User):\n        self.ticket_id = ticket_id\n        self.title = title\n        self.description = description\n        self.priority = priority\n        self.creator = creator\n        self.status = TicketStatus.OPEN\n        self.assignee: Optional[Agent] = None\n\n    def update_status(self, new_status: TicketStatus):\n        print(f"Ticket {self.ticket_id} moving from {self.status.value} to {new_status.value}")\n        self.status = new_status\n\n    def assign_to(self, agent: Agent):\n        self.assignee = agent\n        self.status = TicketStatus.IN_PROGRESS\n\n# --- Assignment Strategies (Strategy Pattern) ---\nclass AssignmentStrategy(ABC):\n    @abstractmethod\n    def assign(self, ticket: Ticket, agents: List[Agent]) -> Optional[Agent]:\n        pass\n\nclass RoundRobinStrategy(AssignmentStrategy):\n    def __init__(self):\n        self.index = 0\n\n    def assign(self, ticket: Ticket, agents: List[Agent]) -> Optional[Agent]:\n        if not agents: return None\n        agent = agents[self.index % len(agents)]\n        self.index += 1\n        return agent\n\nclass LeastLoadedStrategy(AssignmentStrategy):\n    def assign(self, ticket: Ticket, agents: List[Agent]) -> Optional[Agent]:\n        if not agents: return None\n        # Find agent with the minimum number of assigned tickets\n        return min(agents, key=lambda a: a.assigned_tickets_count)\n\n# --- Ticket System (The Facade/Manager) ---\nclass TicketSystem:\n    _instance = None\n\n    def __new__(cls):\n        if cls._instance is None:\n            cls._instance = super(TicketSystem, cls).__new__(cls)\n            cls._instance.tickets = {}\n            cls._instance.agents = []\n            cls._instance.strategy = RoundRobinStrategy() # Default\n        return cls._instance\n\n    def set_strategy(self, strategy: AssignmentStrategy):\n        self.strategy = strategy\n\n    def add_agent(self, agent: Agent):\n        self.agents.append(agent)\n\n    def create_ticket(self, ticket_id: str, title: str, desc: str, \n                      priority: TicketPriority, user: User) -> Ticket:\n        ticket = Ticket(ticket_id, title, desc, priority, user)\n        self.tickets[ticket_id] = ticket\n        \n        # Auto-assign ticket\n        agent = self.strategy.assign(ticket, self.agents)\n        if agent:\n            ticket.assign_to(agent)\n            agent.increment_load()\n            print(f"Ticket {ticket_id} auto-assigned to Agent {agent.name}")\n        \n        return ticket\n\n    def resolve_ticket(self, ticket_id: str):\n        if ticket_id in self.tickets:\n            ticket = self.tickets[ticket_id]\n            ticket.update_status(TicketStatus.RESOLVED)\n            if ticket.assignee:\n                ticket.assignee.decrement_load()\n\n# --- Execution ---\nif __name__ == "__main__":\n    system = TicketSystem()\n    \n    # Setup Agents\n    alice = Agent("A1", "Alice", "alice@support.com", "Technical")\n    bob = Agent("A2", "Bob", "bob@support.com", "Billing")\n    system.add_agent(alice)\n    system.add_agent(bob)\n\n    # Setup Customer\n    customer = User("C1", "John Doe", "john@gmail.com")\n\n    # Scenario 1: Round Robin\n    print("--- Scenario 1: Round Robin ---")\n    system.create_ticket("T1", "Login Issue", "Cannot login", TicketPriority.HIGH, customer)\n    system.create_ticket("T2", "Payment Fail", "Card declined", TicketPriority.MEDIUM, customer)\n    system.create_ticket("T3", "UI Bug", "Button missing", TicketPriority.LOW, customer)\n\n    # Scenario 2: Change Strategy to Least Loaded\n    print("\\n--- Scenario 2: Least Loaded ---")\n    system.set_strategy(LeastLoadedStrategy())\n    # Resolve T1 so Alice (A1) becomes the least loaded\n    system.resolve_ticket("T1") \n    system.create_ticket("T4", "API Timeout", "408 Error", TicketPriority.URGENT, customer)\n```\n\n### Logic Walkthrough\n1.  **Initialization**: The `TicketSystem` is a Singleton. It maintains a registry of all `agents` and `tickets`.\n2.  **Ticket Creation**: When `create_ticket` is called, a `Ticket` object is instantiated. \n3.  **Dynamic Assignment**: The system calls `self.strategy.assign()`. Because we use the Strategy pattern, the system doesn\'t care *how* the agent is chosen—it only cares that it gets an `Agent` object back.\n4.  **Load Tracking**: The `Agent` class tracks `assigned_tickets_count`. This allows the `LeastLoadedStrategy` to make data-driven decisions.\n5.  **State Transition**: When `resolve_ticket` is called, the status changes to `RESOLVED` and the agent\'s load is decremented, making them available for more urgent tickets.\n\n---\n\n## 5. Complexity Analysis\n\n| Operation | Time Complexity | Space Complexity | Description |\n| :--- | :--- | :--- | :--- |\n| **Create Ticket** | $O(1)$ or $O(A)$ | $O(1)$ | $O(1)$ for Round Robin; $O(A)$ for Least Loaded where $A$ is the number of agents. |\n| **Assign Ticket** | $O(A)$ | $O(1)$ | Finding the agent with the minimum load requires scanning the agent list. |\n| **Resolve Ticket** | $O(1)$ | $O(1)$ | Direct lookup in the ticket map. |\n| **Overall Storage**| $O(T + A)$ | $O(T + A)$ | $T$ is total tickets, $A$ is total agents. |\n\n---\n\n## 6. Real-World Applications\n\nThis LLD pattern is the foundation for several production-grade systems:\n- **Customer Support Tools**: Zendesk and Freshdesk use similar assignment strategies to distribute tickets among support tiers (L1, L2, L3).\n- **Bug Tracking Systems**: Jira Service Management uses custom "Issue Type" factories and "Assignment Schemes" (similar to our Strategy pattern).\n- **Cloud Load Balancers**: The `LeastLoadedStrategy` is conceptually identical to the "Least Connections" algorithm used in Nginx or AWS ELB to distribute network traffic to servers.\n- **Ride-Sharing Apps**: Uber/Lyft use an evolved version of this to assign the "best" driver (Agent) to a rider (Customer) based on proximity (Strategy).',
+    'readme_content': """# Ticket Resolution System LLD
+
+A Ticket Resolution System (or Help Desk System) is a critical piece of enterprise infrastructure used to manage customer grievances, technical bugs, and service requests. The goal is to ensure that every request is captured, categorized, assigned to the right expert, and resolved within a specified timeframe (SLA).
+
+## 1. Overview & System Requirements
+
+### Core Actors
+- **Customer**: The user who creates a ticket to report an issue.
+- **Support Agent**: The technical staff member who works on the ticket to provide a resolution.
+- **Admin/Manager**: The user who manages agents, departments, and monitors system-wide performance.
+
+### Functional Requirements
+- **Ticket Creation**: Customers can create tickets with a title, description, priority, and category.
+- **Ticket Assignment**: Tickets must be assigned to available agents. This can be done via:
+    - **Manual Assignment**: Admin assigns a specific agent.
+    - **Automatic Assignment**: System assigns based on a strategy (e.g., Round Robin or Least Loaded).
+- **Lifecycle Management**: Tickets transition through states: `Open` $\rightarrow$ `InProgress` $\rightarrow$ `Resolved` $\rightarrow$ `Closed`.
+- **Priority Handling**: High-priority tickets should be surfaced or handled first.
+- **Notifications**: Users should be notified when a ticket is assigned or its status changes.
+- **Categorization**: Tickets are grouped by departments (e.g., Billing, Technical, Sales).
+
+---
+
+## 2. Design Principles & Patterns
+
+### SOLID Principles Applied
+- **Single Responsibility Principle (SRP)**: We separate the `Ticket` (data), `TicketManager` (orchestration), and `AssignmentStrategy` (logic).
+- **Open/Closed Principle (OCP)**: By using the **Strategy Pattern** for ticket assignment, we can add new assignment algorithms (e.g., Skill-based routing) without modifying the existing `TicketManager` code.
+- **Dependency Inversion Principle (DIP)**: The `TicketManager` depends on the `AssignmentStrategy` interface, not concrete implementations.
+
+### Design Patterns Used
+| Pattern | Purpose | Why it solves the problem |
+| :--- | :--- | :--- |
+| **Strategy Pattern** | Assignment Logic | Decouples the "who gets the ticket" logic from the "how to create a ticket" logic. |
+| **Observer Pattern** | Notifications | Allows multiple notification channels (Email, SMS, Push) to react to status changes without coupling the Ticket class to notification services. |
+| **Factory Pattern** | Ticket Creation | Simplifies the creation of different ticket types (e.g., Bug vs. Feature Request) if specific defaults are needed. |
+| **Singleton Pattern** | TicketSystem | Ensures a single point of truth for managing the global state of all active tickets. |
+
+---
+
+## 3. Class Structure & Relationships
+
+### Class Diagram (ASCII)
+```text
++-------------------+        +-----------------------+        +-----------------------+
+|      User         |<-------|     TicketManager     |<-------|   AssignmentStrategy  |
++-------------------+        +-----------------------+        +-----------------------+
+| - userId          |        | - tickets: Map        |        | + assign(ticket, agents)|
+| - name            |        | - agents: List        |        +-----------^-----------+
++--------^----------+        +-----------+-----------+                    |
+         |                               |                        +-------+-------+
+         +-------------------------------+                        |               |
+         |                               |               +----------------+ +----------------+
+ +-------+-------+               +-------v-------+       | RoundRobinStrat | | LeastLoadedStrat|
+ | Customer      |               |    Ticket     |       +----------------+ +----------------+
+ +---------------+               +---------------+
+ | + createTicket|               | - ticketId    |
+ +---------------+               | - status      |
+                                 | - priority    |
+                                 | - assignee    |
+                                 +---------------+
+```
+
+### Relationships
+- **Composition**: `TicketManager` contains a collection of `Ticket` objects.
+- **Aggregation**: `Ticket` is associated with a `User` (creator) and an `Agent` (assignee).
+- **Strategy**: `TicketManager` holds a reference to an `AssignmentStrategy` interface.
+
+---
+
+## 4. Step-by-Step Logic & Code Walkthrough
+
+### Implementation
+
+```python
+from enum import Enum
+from abc import ABC, abstractmethod
+from typing import List, Dict, Optional
+from collections import deque
+
+# --- Enums ---
+class TicketStatus(Enum):
+    OPEN = "Open"
+    IN_PROGRESS = "In Progress"
+    RESOLVED = "Resolved"
+    CLOSED = "Closed"
+
+class TicketPriority(Enum):
+    LOW = 1
+    MEDIUM = 2
+    HIGH = 3
+    URGENT = 4
+
+# --- Core Entities ---
+class User:
+    def __init__(self, user_id: str, name: str, email: str):
+        self.user_id = user_id
+        self.name = name
+        self.email = email
+
+class Agent(User):
+    def __init__(self, user_id: str, name: str, email: str, expertise: str):
+        super().__init__(user_id, name, email)
+        self.expertise = expertise
+        self.assigned_tickets_count = 0
+
+    def increment_load(self):
+        self.assigned_tickets_count += 1
+
+    def decrement_load(self):
+        self.assigned_tickets_count -= 1
+
+class Ticket:
+    def __init__(self, ticket_id: str, title: str, description: str, 
+                 priority: TicketPriority, creator: User):
+        self.ticket_id = ticket_id
+        self.title = title
+        self.description = description
+        self.priority = priority
+        self.creator = creator
+        self.status = TicketStatus.OPEN
+        self.assignee: Optional[Agent] = None
+
+    def update_status(self, new_status: TicketStatus):
+        print(f"Ticket {self.ticket_id} moving from {self.status.value} to {new_status.value}")
+        self.status = new_status
+
+    def assign_to(self, agent: Agent):
+        self.assignee = agent
+        self.status = TicketStatus.IN_PROGRESS
+
+# --- Assignment Strategies (Strategy Pattern) ---
+class AssignmentStrategy(ABC):
+    @abstractmethod
+    def assign(self, ticket: Ticket, agents: List[Agent]) -> Optional[Agent]:
+        pass
+
+class RoundRobinStrategy(AssignmentStrategy):
+    def __init__(self):
+        self.index = 0
+
+    def assign(self, ticket: Ticket, agents: List[Agent]) -> Optional[Agent]:
+        if not agents: return None
+        agent = agents[self.index % len(agents)]
+        self.index += 1
+        return agent
+
+class LeastLoadedStrategy(AssignmentStrategy):
+    def assign(self, ticket: Ticket, agents: List[Agent]) -> Optional[Agent]:
+        if not agents: return None
+        # Find agent with the minimum number of assigned tickets
+        return min(agents, key=lambda a: a.assigned_tickets_count)
+
+# --- Ticket System (The Facade/Manager) ---
+class TicketSystem:
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(TicketSystem, cls).__new__(cls)
+            cls._instance.tickets = {}
+            cls._instance.agents = []
+            cls._instance.strategy = RoundRobinStrategy() # Default
+        return cls._instance
+
+    def set_strategy(self, strategy: AssignmentStrategy):
+        self.strategy = strategy
+
+    def add_agent(self, agent: Agent):
+        self.agents.append(agent)
+
+    def create_ticket(self, ticket_id: str, title: str, desc: str, 
+                      priority: TicketPriority, user: User) -> Ticket:
+        ticket = Ticket(ticket_id, title, desc, priority, user)
+        self.tickets[ticket_id] = ticket
+        
+        # Auto-assign ticket
+        agent = self.strategy.assign(ticket, self.agents)
+        if agent:
+            ticket.assign_to(agent)
+            agent.increment_load()
+            print(f"Ticket {ticket_id} auto-assigned to Agent {agent.name}")
+        
+        return ticket
+
+    def resolve_ticket(self, ticket_id: str):
+        if ticket_id in self.tickets:
+            ticket = self.tickets[ticket_id]
+            ticket.update_status(TicketStatus.RESOLVED)
+            if ticket.assignee:
+                ticket.assignee.decrement_load()
+
+# --- Execution ---
+if __name__ == "__main__":
+    system = TicketSystem()
+    
+    # Setup Agents
+    alice = Agent("A1", "Alice", "alice@support.com", "Technical")
+    bob = Agent("A2", "Bob", "bob@support.com", "Billing")
+    system.add_agent(alice)
+    system.add_agent(bob)
+
+    # Setup Customer
+    customer = User("C1", "John Doe", "john@gmail.com")
+
+    # Scenario 1: Round Robin
+    print("--- Scenario 1: Round Robin ---")
+    system.create_ticket("T1", "Login Issue", "Cannot login", TicketPriority.HIGH, customer)
+    system.create_ticket("T2", "Payment Fail", "Card declined", TicketPriority.MEDIUM, customer)
+    system.create_ticket("T3", "UI Bug", "Button missing", TicketPriority.LOW, customer)
+
+    # Scenario 2: Change Strategy to Least Loaded
+    print("\n--- Scenario 2: Least Loaded ---")
+    system.set_strategy(LeastLoadedStrategy())
+    # Resolve T1 so Alice (A1) becomes the least loaded
+    system.resolve_ticket("T1") 
+    system.create_ticket("T4", "API Timeout", "408 Error", TicketPriority.URGENT, customer)
+```
+
+### Logic Walkthrough
+1.  **Initialization**: The `TicketSystem` is a Singleton. It maintains a registry of all `agents` and `tickets`.
+2.  **Ticket Creation**: When `create_ticket` is called, a `Ticket` object is instantiated. 
+3.  **Dynamic Assignment**: The system calls `self.strategy.assign()`. Because we use the Strategy pattern, the system doesn't care *how* the agent is chosen—it only cares that it gets an `Agent` object back.
+4.  **Load Tracking**: The `Agent` class tracks `assigned_tickets_count`. This allows the `LeastLoadedStrategy` to make data-driven decisions.
+5.  **State Transition**: When `resolve_ticket` is called, the status changes to `RESOLVED` and the agent's load is decremented, making them available for more urgent tickets.
+
+---
+
+## 5. Complexity Analysis
+
+| Operation | Time Complexity | Space Complexity | Description |
+| :--- | :--- | :--- | :--- |
+| **Create Ticket** | $O(1)$ or $O(A)$ | $O(1)$ | $O(1)$ for Round Robin; $O(A)$ for Least Loaded where $A$ is the number of agents. |
+| **Assign Ticket** | $O(A)$ | $O(1)$ | Finding the agent with the minimum load requires scanning the agent list. |
+| **Resolve Ticket** | $O(1)$ | $O(1)$ | Direct lookup in the ticket map. |
+| **Overall Storage**| $O(T + A)$ | $O(T + A)$ | $T$ is total tickets, $A$ is total agents. |
+
+---
+
+## 6. Real-World Applications
+
+This LLD pattern is the foundation for several production-grade systems:
+- **Customer Support Tools**: Zendesk and Freshdesk use similar assignment strategies to distribute tickets among support tiers (L1, L2, L3).
+- **Bug Tracking Systems**: Jira Service Management uses custom "Issue Type" factories and "Assignment Schemes" (similar to our Strategy pattern).
+- **Cloud Load Balancers**: The `LeastLoadedStrategy` is conceptually identical to the "Least Connections" algorithm used in Nginx or AWS ELB to distribute network traffic to servers.
+- **Ride-Sharing Apps**: Uber/Lyft use an evolved version of this to assign the "best" driver (Agent) to a rider (Customer) based on proximity (Strategy).""",
+    'solutions': """# Design Document: Ticket Resolution System
+
+## 1. Requirements & System Constraints
+
+### 1.1 Functional Requirements
+*   **Ticket Lifecycle Management**: Users must be able to create tickets, update them, and view their status.
+*   **Ticket Assignment**: 
+    *   **Automatic**: Based on round-robin or skill-based routing.
+    *   **Manual**: Admins or lead agents can assign tickets to specific agents.
+*   **Communication**: Threaded comments/conversations between the customer and the agent.
+*   **Prioritization & Categorization**: Tickets must be categorized (e.g., Billing, Technical, Feature Request) and assigned a priority (Low, Medium, High, Urgent).
+*   **SLA Tracking**: Define Service Level Agreements (SLAs) based on priority (e.g., "High" priority must be responded to within 4 hours).
+*   **Notifications**: Real-time alerts (Email/Push) when a ticket is created, assigned, or updated.
+*   **Audit Trail**: Every change to a ticket (status change, assignee change) must be logged.
+
+### 1.2 Non-Functional Requirements
+*   **Availability**: The system must be highly available; users should always be able to submit tickets.
+*   **Durability**: No ticket or comment should be lost once acknowledged.
+*   **Auditability**: Complete history of ticket transitions for compliance and performance reviews.
+*   **Scalability**: Must handle spikes in ticket volume (e.g., during a major service outage).
+*   **Consistency**: Ticket assignment must be consistent (avoiding "double-assignment" where two agents believe they own the same ticket).
+
+### 1.3 Scale Estimations (High-Level)
+*   **Daily Active Users (DAU)**: 100k customers, 1k agents.
+*   **Ticket Volume**: 10k tickets/day.
+*   **Comment Volume**: 50k comments/day.
+*   **Read/Write Ratio**: Read-heavy (Customers checking status, Agents scanning queues).
+
+---
+
+## 2. High-Level Architecture
+
+The system follows a microservices-oriented architecture to decouple the ticket management from the assignment logic and notification delivery.
+
+### 2.1 Component Diagram
+```mermaid
+graph TD
+    User((Customer)) --> Gateway[API Gateway]
+    Agent((Agent)) --> Gateway
+    
+    Gateway --> TicketSvc[Ticket Service]
+    Gateway --> AssignmentSvc[Assignment Service]
+    
+    TicketSvc --> TicketDB[(PostgreSQL)]
+    TicketSvc --> SearchIndex[(Elasticsearch)]
+    
+    TicketSvc --> MessageBus[Message Queue / Kafka]
+    AssignmentSvc --> MessageBus
+    
+    MessageBus --> NotificationSvc[Notification Service]
+    MessageBus --> SLAManager[SLA Manager/Worker]
+    
+    SLAManager --> TicketDB
+    NotificationSvc --> EmailSvc[Email/Push Provider]
+```
+
+### 2.2 Core Component Interactions
+1.  **Ticket Service**: Handles CRUD operations for tickets and comments. It publishes events to the Message Bus (e.g., `TICKET_CREATED`).
+2.  **Assignment Service**: Listens for `TICKET_CREATED`. It evaluates the category and agent availability to assign the ticket and updates the `tickets` table.
+3.  **SLA Manager**: A background worker that monitors tickets. If a ticket remains in `OPEN` status beyond the SLA threshold, it triggers an escalation event.
+4.  **Search Index**: Asynchronously indexed from the DB to allow agents to search through thousands of historical tickets using keywords.
+
+---
+
+## 3. Detailed Database Schema Design
+
+A Relational Database (PostgreSQL) is chosen because the system requires strong ACID properties for ticket state transitions and complex relational queries for reporting.
+
+### 3.1 Tables
+
+#### `users`
+| Field | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `user_id` | UUID | PK | Unique identifier |
+| `email` | VARCHAR | Unique, Index | User email |
+| `role` | ENUM | NOT NULL | CUSTOMER, AGENT, ADMIN |
+| `skill_set` | TEXT[] | - | Skills for routing (e.g., ['Java', 'Billing']) |
+| `status` | ENUM | - | ACTIVE, AWAY, OFFLINE |
+
+#### `tickets`
+| Field | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `ticket_id` | UUID | PK | Unique identifier |
+| `creator_id` | UUID | FK $\rightarrow$ users | User who raised the ticket |
+| `assignee_id`| UUID | FK $\rightarrow$ users (Null) | Agent assigned to the ticket |
+| `category_id`| UUID | FK $\rightarrow$ categories | Technical, Billing, etc. |
+| `priority` | ENUM | NOT NULL | LOW, MEDIUM, HIGH, URGENT |
+| `status` | ENUM | Index | OPEN, IN_PROGRESS, RESOLVED, CLOSED |
+| `subject` | VARCHAR | NOT NULL | Brief summary |
+| `description`| TEXT | NOT NULL | Detailed issue |
+| `created_at` | TIMESTAMP | Index | Creation time |
+| `updated_at` | TIMESTAMP | - | Last modification time |
+
+#### `ticket_comments`
+| Field | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `comment_id` | UUID | PK | Unique identifier |
+| `ticket_id` | UUID | FK $\rightarrow$ tickets | Link to ticket |
+| `user_id` | UUID | FK $\rightarrow$ users | Author of the comment |
+| `body` | TEXT | NOT NULL | The message content |
+| `is_internal`| BOOLEAN | DEFAULT False | Internal note (invisible to customer) |
+| `created_at` | TIMESTAMP | - | Time of posting |
+
+#### `ticket_audit_log`
+| Field | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `log_id` | BIGINT | PK | Auto-increment |
+| `ticket_id` | UUID | FK $\rightarrow$ tickets | Link to ticket |
+| `changed_by` | UUID | FK $\rightarrow$ users | Who made the change |
+| `field_name` | VARCHAR | - | e.g., "status", "assignee_id" |
+| `old_value` | TEXT | - | Previous value |
+| `new_value` | TEXT | - | Updated value |
+| `timestamp` | TIMESTAMP | - | Time of change |
+
+#### `sla_policies`
+| Field | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `policy_id` | UUID | PK | Unique identifier |
+| `category_id`| UUID | FK $\rightarrow$ categories | Link to category |
+| `priority` | ENUM | - | Priority level |
+| `resolution_time_hrs`| INT | - | Max hours to resolve |
+| `response_time_hrs` | INT | - | Max hours for first response |
+
+### 3.2 Indexing Strategy
+*   **B-Tree Index** on `tickets(status, created_at)`: For agents to fetch the oldest open tickets.
+*   **B-Tree Index** on `tickets(assignee_id)`: To fetch all tickets assigned to a specific agent.
+*   **Full-Text Search Index (Elasticsearch)**: On `tickets(subject, description)` and `ticket_comments(body)`.
+
+---
+
+## 4. Core API Design
+
+### 4.1 Ticket Operations
+**Create Ticket**
+`POST /api/v1/tickets`
+```json
+{
+  "subject": "Cannot access payment gateway",
+  "description": "Receiving 500 error on checkout page since 10 AM.",
+  "category_id": "cat-123",
+  "priority": "HIGH"
+}
+```
+$\rightarrow$ `201 Created` | `{ "ticket_id": "tkt-999", "status": "OPEN" }`
+
+**Update Ticket Status/Assignee**
+`PATCH /api/v1/tickets/{ticket_id}`
+```json
+{
+  "status": "IN_PROGRESS",
+  "assignee_id": "agent-456"
+}
+```
+$\rightarrow$ `200 OK`
+
+**Add Comment**
+`POST /api/v1/tickets/{ticket_id}/comments`
+```json
+{
+  "body": "I have checked the logs and it seems to be a DB connection timeout.",
+  "is_internal": true
+}
+```
+$\rightarrow$ `201 Created`
+
+### 4.2 Agent Operations
+**Fetch Agent Queue**
+`GET /api/v1/agent/tickets?status=OPEN&sort=created_at_asc`
+$\rightarrow$ `200 OK` | `[ { "ticket_id": "...", "subject": "..." }, ... ]`
+
+---
+
+## 5. Scalability & Advanced Topics
+
+### 5.1 Assignment Logic (The "Brain")
+To avoid race conditions when assigning tickets:
+*   **Distributed Locking**: Use Redis (Redlock) to ensure a ticket is not assigned to two agents simultaneously.
+*   **Skill-Based Routing**: The `AssignmentSvc` queries for agents who have the required `skill_set` for the ticket's `category_id` and are currently `ACTIVE`.
+*   **Round-Robin**: Maintain a pointer/counter in Redis per category to distribute tickets evenly.
+
+### 5.2 SLA Management & Escalation
+*   **Delayed Queues**: When a ticket is created, the SLA Manager schedules a check event in a delayed queue (e.g., RabbitMQ TTL or Temporal workflow) for the `response_time_hrs` duration.
+*   **Polling/Scanning**: A cron job scans for tickets where `status != RESOLVED` and `updated_at < (now - SLA_duration)`.
+
+### 5.3 Caching Strategy
+*   **User Profiles**: Cache agent status and skill sets in Redis.
+*   **Read-Through Cache**: Cache the most recently viewed tickets for a specific user to reduce DB load.
+
+### 5.4 Fault Tolerance
+*   **Dead Letter Queues (DLQ)**: If the Notification Service fails to send an email, the message is moved to a DLQ for retry.
+*   **Database Read Replicas**: Use read replicas for reporting dashboards and history views to keep the primary DB performant for writes.
+
+---
+
+## 6. Trade-off Analysis
+
+| Trade-off | Decision | Reasoning |
+| :--- | :--- | :--- |
+| **SQL vs NoSQL** | **SQL (PostgreSQL)** | Ticket systems are highly relational. Strong consistency is required for status changes and audit logs. Joins are necessary for complex agent reporting. |
+| **Sync vs Async Assignment** | **Async (via Queue)** | Assigning a ticket might involve complex logic (calculating agent load, skill matching). Doing this synchronously would increase API latency for the customer. |
+| **Consistency vs Availability** | **Consistency (CP)** | In ticket assignment, it is better to have a slight delay in assignment than to have two agents conflict on the same ticket, leading to duplicate work and customer confusion. |
+| **Search: DB vs Elasticsearch** | **Elasticsearch** | SQL `LIKE` queries are too slow for large volumes of unstructured text in descriptions and comments. External indexing allows for fuzzy search and better performance. |
+| **Audit Log: Table vs JSONB** | **Dedicated Table** | While JSONB is flexible, a structured audit table allows for easier querying of "Who changed X to Y" across the entire system for performance analytics. |""",
 }

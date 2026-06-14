@@ -26,10 +26,11 @@ def two_sum(nums: list[int], target: int) -> list[int]:
 # PLURAL SOLUTIONS & COMPLEXITY ANALYSIS
 # =====================================================================
 
-# --- APPROACH 1: Naive Brute Force ---
-# Time Complexity: O(N^2)
+# --- APPROACH 1: Naive (Brute Force) ---
+# Time Complexity: O(n^2)
 # Space Complexity: O(1)
-def two_sum_brute_force(nums: list[int], target: int) -> list[int]:
+# This approach uses nested loops to check every possible pair of numbers in the array to see if they sum up to the target.
+def two_sum_naive(nums: list[int], target: int) -> list[int]:
     n = len(nums)
     for i in range(n):
         for j in range(i + 1, n):
@@ -37,20 +38,19 @@ def two_sum_brute_force(nums: list[int], target: int) -> list[int]:
                 return [i, j]
     return []
 
-
-# --- APPROACH 2: Optimal Pythonic (Hash Map) ---
-# Time Complexity: O(N)
-# Space Complexity: O(N)
-# Exploits Python's fast dictionary hashing for constant-time lookups.
+# --- APPROACH 2: Optimal (Hash Map) ---
+# Time Complexity: O(n)
+# Space Complexity: O(n)
+# This approach is optimal because it reduces the search time for the complement (target - current_value) from O(n) to O(1) 
+# using a hash map, allowing us to find the result in a single pass through the array.
 def two_sum_optimal(nums: list[int], target: int) -> list[int]:
-    num_to_idx = {}
-    for idx, num in enumerate(nums):
-        complement = target - num
-        if complement in num_to_idx:
-            return [num_to_idx[complement], idx]
-        num_to_idx[num] = idx
+    prev_map = {}  # val : index
+    for i, n in enumerate(nums):
+        diff = target - n
+        if diff in prev_map:
+            return [prev_map[diff], i]
+        prev_map[n] = i
     return []
-
 
 # --- APPROACH 3: Secondary Language (Java Variant) ---
 """
@@ -60,16 +60,25 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class TwoSum {
+    /**
+     * Returns the indices of two numbers such that they add up to the target.
+     * Time Complexity: O(n)
+     * Space Complexity: O(n)
+     */
     public int[] twoSum(int[] nums, int target) {
-        Map<Integer, Integer> numMap = new HashMap<>();
+        Map<Integer, Integer> prevMap = new HashMap<>();
+        
         for (int i = 0; i < nums.length; i++) {
-            int complement = target - nums[i];
-            if (numMap.containsKey(complement)) {
-                return new int[] { numMap.get(complement), i };
+            int diff = target - nums[i];
+            if (prevMap.containsKey(diff)) {
+                return new int[] { prevMap.get(diff), i };
             }
-            numMap.put(nums[i], i);
+            prevMap.put(nums[i], i);
         }
-        throw new IllegalArgumentException("No two sum solution");
+        
+        // Based on problem constraints, a solution is always guaranteed.
+        // Returning an empty array or throwing an exception as a fallback.
+        return new int[] {};
     }
 }
 """

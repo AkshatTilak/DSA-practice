@@ -16,31 +16,79 @@ def max_profit(prices: list[int]) -> int:
 # PLURAL SOLUTIONS & COMPLEXITY ANALYSIS
 # =====================================================================
 
-# Approach 1: Naive (O(N^2))
+# --- APPROACH 1: Naive (Brute Force) ---
+# Time Complexity: O(n^2)
+# Space Complexity: O(1)
+# This approach iterates through every possible pair of buying and selling days, 
+# calculating the profit for each valid pair (where sell day > buy day) and 
+# keeping track of the maximum value found.
 def max_profit_naive(prices: list[int]) -> int:
+    if not prices or len(prices) < 2:
+        return 0
+    
     max_p = 0
     for i in range(len(prices)):
         for j in range(i + 1, len(prices)):
-            max_p = max(max_p, prices[j] - prices[i])
+            profit = prices[j] - prices[i]
+            if profit > max_p:
+                max_p = profit
     return max_p
 
-# Approach 2: Optimal (Sliding Window / Min Tracker) O(N)
+# --- APPROACH 2: Optimal (One-Pass / Two-Pointer) ---
+# Time Complexity: O(n)
+# Space Complexity: O(1)
+# This approach is optimal because it traverses the list exactly once. 
+# It maintains the minimum price encountered so far and calculates the potential 
+# profit at every step. By updating the minimum price and the maximum profit 
+# greedily, we find the global maximum in linear time without redundant calculations.
 def max_profit_optimal(prices: list[int]) -> int:
-    min_p = float('inf')
+    if not prices:
+        return 0
+    
+    min_price = float('inf')
     max_p = 0
-    for p in prices:
-        if p < min_p: min_p = p
-        elif p - min_p > max_p: max_p = p - min_p
+    
+    for price in prices:
+        if price < min_price:
+            min_price = price
+        elif price - min_price > max_p:
+            max_p = price - min_price
+            
     return max_p
 
-# Approach 3: Java
-'''
-public int maxProfit(int[] prices) {
-    int min = Integer.MAX_VALUE, max = 0;
-    for(int p : prices) {
-        if(p < min) min = p;
-        else if(p - min > max) max = p - min;
+# --- APPROACH 3: Secondary Language (Java Variant) ---
+"""
+package sliding_window;
+
+public class BestTimeToBuyAndSellStock {
+    /**
+     * Calculates the maximum profit from buying and selling a stock.
+     * Time Complexity: O(n)
+     * Space Complexity: O(1)
+     */
+    public int maxProfit(int[] prices) {
+        if (prices == null || prices.length < 2) {
+            return 0;
+        }
+
+        int minPrice = Integer.MAX_VALUE;
+        int maxProfit = 0;
+
+        for (int price : prices) {
+            if (price < minPrice) {
+                minPrice = price;
+            } else if (price - minPrice > maxProfit) {
+                maxProfit = price - minPrice;
+            }
+        }
+
+        return maxProfit;
     }
-    return max;
+
+    public static void main(String[] args) {
+        BestTimeToBuyAndSellStock solution = new BestTimeToBuyAndSellStock();
+        int[] prices = {7, 1, 5, 3, 6, 4};
+        System.out.println("Max Profit: " + solution.maxProfit(prices)); // Output: 5
+    }
 }
-'''
+"""

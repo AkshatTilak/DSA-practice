@@ -3,5 +3,454 @@ INFO = {
     'type': 'design',
     'description': 'Design Web Crawler (Extensible design).',
     'groups': ['OOP Case Studies', 'Concurrency'],
-    'readme_content': '# Web Crawler LLD\n\nA **Web Crawler** (or spider) is a system that systematically browses the World Wide Web, typically for the purpose of indexing pages for a search engine. Designing an **extensible** web crawler requires a careful balance between concurrency, politeness (respecting server limits), and the ability to handle diverse content types and storage backends.\n\n---\n\n## 1. Overview & System Requirements\n\n### Core Objective\nBuild a system that starts with a set of "seed" URLs, fetches the content of those pages, extracts all outgoing links, and recursively visits those links while ensuring no page is visited twice and the target servers are not overwhelmed.\n\n### Functional Requirements\n- **URL Frontier**: Manage a queue of URLs to be visited.\n- **Duplicate Detection**: Ensure the same URL is not processed multiple times.\n- **Fetching**: Retrieve the HTML content of a page.\n- **Parsing**: Extract links and specific data from the retrieved content.\n- **Robots.txt Compliance**: Respect the crawling rules defined by the website owner.\n- **Extensibility**: Support different parsing strategies (HTML, PDF, JSON) and different storage backends.\n\n### Non-Functional Requirements\n- **Scalability**: Handle millions of pages through concurrency.\n- **Politeness**: Implement delays between requests to the same domain.\n- **Robustness**: Handle timeouts, 404s, and malformed HTML.\n\n---\n\n## 2. Design Principles & Patterns\n\nTo ensure the design is "extensible," we apply several software engineering patterns:\n\n### A. Strategy Pattern\n**Application**: Used for `ParsingStrategy` and `CrawlingStrategy`.\n**Why**: Different websites require different parsing logic (e.g., an HTML parser vs. a PDF parser). By encapsulating these in strategies, we can add new file-type support without modifying the core `CrawlerEngine`.\n\n### B. Factory Pattern\n**Application**: `ParserFactory` and `FetcherFactory`.\n**Why**: The system should decide at runtime which parser to use based on the `Content-Type` header of the HTTP response. The Factory decouples the selection logic from the execution logic.\n\n### C. Singleton Pattern\n**Application**: `ConfigurationManager` or `DatabaseConnection`.\n**Why**: Ensures that system-wide settings (like max threads or timeout limits) are consistent across all worker threads.\n\n### D. SOLID Principles\n- **Single Responsibility (SRP)**: The `Fetcher` only downloads; the `Parser` only extracts; the `UrlFrontier` only manages the queue.\n- **Open/Closed Principle**: The system is open for extension (adding new `IParser` implementations) but closed for modification of the `CrawlerEngine`.\n- **Dependency Inversion (DIP)**: The `CrawlerEngine` depends on interfaces (`IParser`, `IFetcher`) rather than concrete classes.\n\n---\n\n## 3. Class Structure & Relationships\n\n### Class Diagram (Conceptual)\n\n```text\n+-------------------+          +-------------------+\n|   CrawlerEngine   | -------->|    UrlFrontier    |\n+-------------------+          +-------------------+\n          |                             |\n          | (uses)                      | (manages)\n          v                             v\n+-------------------+          +-------------------+\n|    IFetcher       |          |      URL          |\n+-------------------+          +-------------------+\n          ^                             ^\n          |                             |\n+-------------------+          +-------------------+\n|   HttpFetcher     |          |   VisitedSet      |\n+-------------------+          +-------------------+\n          |\n          v\n+-------------------+          +-------------------+\n|    IParser        | <--------|   ParserFactory   |\n+-------------------+          +-------------------+\n          ^                             |\n          |                             |\n    +-----+-----+                       |\n    |           |                       |\n+-----------+ +-----------+             |\n| HtmlParser| | PdfParser | <-----------+\n+-----------+ +-----------+\n```\n\n### Component Definitions\n\n| Component | Responsibility | Key Methods |\n| :--- | :--- | :--- |\n| **UrlFrontier** | Manages the queue of pending URLs and tracks visited ones. | `add_url()`, `get_next_url()` |\n| **IFetcher** | Interface for downloading content. | `fetch(url)` |\n| **IParser** | Interface for extracting links/data. | `parse(content)` |\n| **ParserFactory** | Returns the appropriate parser based on content type. | `get_parser(content_type)` |\n| **CrawlerEngine** | The orchestrator that ties all components together. | `start_crawling()` |\n\n---\n\n## 4. Step-by-Step Logic & Code Walkthrough\n\n### Implementation\n\n```python\nfrom abc import ABC, abstractmethod\nfrom queue import Queue, Empty\nfrom threading import Thread, Lock\nimport requests\nfrom bs4 import BeautifulSoup\nimport time\n\n# --- Interfaces ---\n\nclass IParser(ABC):\n    @abstractmethod\n    def parse(self, content: str):\n        pass\n\nclass IFetcher(ABC):\n    @abstractmethod\n    def fetch(self, url: str) -> tuple:\n        pass\n\n# --- Concrete Implementations ---\n\nclass HtmlParser(IParser):\n    def parse(self, content: str):\n        soup = BeautifulSoup(content, \'html.parser\')\n        links = [a.get(\'href\') for a in soup.find_all(\'a\', href=True)]\n        return links\n\nclass PdfParser(IParser):\n    def parse(self, content: str):\n        print("Parsing PDF content...")\n        return [] # Simplified for LLD\n\nclass HttpFetcher(IFetcher):\n    def fetch(self, url: str):\n        try:\n            response = requests.get(url, timeout=5)\n            return response.text, response.headers.get(\'Content-Type\', \'text/html\')\n        except Exception as e:\n            print(f"Error fetching {url}: {e}")\n            return None, None\n\nclass ParserFactory:\n    @staticmethod\n    def get_parser(content_type: str) -> IParser:\n        if \'text/html\' in content_type:\n            return HtmlParser()\n        elif \'application/pdf\' in content_type:\n            return PdfParser()\n        return None\n\n# --- Core System ---\n\nclass UrlFrontier:\n    def __init__(self):\n        self.queue = Queue()\n        self.visited = set()\n        self.lock = Lock()\n\n    def add_url(self, url: str):\n        with self.lock:\n            if url not in self.visited:\n                self.visited.add(url)\n                self.queue.put(url)\n\n    def get_next_url(self):\n        try:\n            return self.queue.get(timeout=2)\n        except Empty:\n            return None\n\nclass CrawlerEngine:\n    def __init__(self, fetcher: IFetcher, frontier: UrlFrontier, num_threads: int = 4):\n        self.fetcher = fetcher\n        self.frontier = frontier\n        self.num_threads = num_threads\n\n    def _worker(self):\n        while True:\n            url = self.frontier.get_next_url()\n            if url is None: break\n            \n            print(f"Crawling: {url}")\n            content, content_type = self.fetcher.fetch(url)\n            \n            if content:\n                parser = ParserFactory.get_parser(content_type)\n                if parser:\n                    links = parser.parse(content)\n                    for link in links:\n                        # In a real scenario, we\'d normalize the URL here\n                        if link.startswith(\'http\'):\n                            self.frontier.add_url(link)\n            \n            time.sleep(1) # Politeness delay\n\n    def start(self, seeds):\n        for seed in seeds:\n            self.frontier.add_url(seed)\n        \n        threads = []\n        for _ in range(self.num_threads):\n            t = Thread(target=self._worker)\n            t.start()\n            threads.append(t)\n        \n        for t in threads:\n            t.join()\n\n# --- Execution ---\nif __name__ == "__main__":\n    frontier = UrlFrontier()\n    fetcher = HttpFetcher()\n    engine = CrawlerEngine(fetcher, frontier, num_threads=2)\n    \n    # Start with a seed URL\n    engine.start(["https://example.com"])\n```\n\n### Logic Walkthrough\n1.  **Initialization**: The `CrawlerEngine` is initialized with a `Fetcher` and a `UrlFrontier`. This allows us to swap `HttpFetcher` for a `MockFetcher` during testing (Dependency Injection).\n2.  **Seeding**: Seed URLs are added to the `UrlFrontier`. The `visited` set prevents the crawler from entering infinite loops.\n3.  **Concurrency**: Multiple worker threads are spawned. Each thread polls the `UrlFrontier` for a new URL.\n4.  **Fetching & Factory**: The `HttpFetcher` retrieves the page. The `ParserFactory` inspects the `Content-Type` header to decide whether an `HtmlParser` or `PdfParser` should handle the data.\n5.  **Expansion**: The `IParser` extracts new links, which are fed back into the `UrlFrontier`, expanding the crawl horizon.\n6.  **Politeness**: A `time.sleep(1)` is implemented to avoid slamming a single server with requests.\n\n---\n\n## 5. Complexity & Performance Analysis\n\n### Time and Space Complexity\n\n| Metric | Complexity | Description |\n| :--- | :--- | :--- |\n| **Time Complexity** | $O(V + E)$ | Where $V$ is the number of unique pages (vertices) and $E$ is the number of links (edges). |\n| **Space Complexity** | $O(V)$ | The `visited` set must store every unique URL encountered to prevent duplicates. |\n| **Concurrency** | $O(T)$ | Throughput increases linearly with the number of threads $T$, until I/O or CPU saturation occurs. |\n\n### Real-World Production Applications\n1.  **Search Engines (Google/Bing)**: Use massively distributed crawlers. Instead of a local `Queue`, they use distributed messaging systems like **Apache Kafka**.\n2.  **Price Aggregators**: Use specialized `Parsers` for different e-commerce sites (Amazon, eBay) to extract pricing data into a structured database.\n3.  **SEO Audit Tools**: Use crawlers to find broken links (404s) and analyze metadata across thousands of pages of a corporate site.\n4.  **Web Archiving (Wayback Machine)**: Focuses on high-fidelity `Fetchers` that save the entire state of a page, including CSS and JS assets.',
+    'readme_content': """# Web Crawler LLD
+
+A **Web Crawler** (or spider) is a system that systematically browses the World Wide Web, typically for the purpose of indexing pages for a search engine. Designing an **extensible** web crawler requires a careful balance between concurrency, politeness (respecting server limits), and the ability to handle diverse content types and storage backends.
+
+---
+
+## 1. Overview & System Requirements
+
+### Core Objective
+Build a system that starts with a set of "seed" URLs, fetches the content of those pages, extracts all outgoing links, and recursively visits those links while ensuring no page is visited twice and the target servers are not overwhelmed.
+
+### Functional Requirements
+- **URL Frontier**: Manage a queue of URLs to be visited.
+- **Duplicate Detection**: Ensure the same URL is not processed multiple times.
+- **Fetching**: Retrieve the HTML content of a page.
+- **Parsing**: Extract links and specific data from the retrieved content.
+- **Robots.txt Compliance**: Respect the crawling rules defined by the website owner.
+- **Extensibility**: Support different parsing strategies (HTML, PDF, JSON) and different storage backends.
+
+### Non-Functional Requirements
+- **Scalability**: Handle millions of pages through concurrency.
+- **Politeness**: Implement delays between requests to the same domain.
+- **Robustness**: Handle timeouts, 404s, and malformed HTML.
+
+---
+
+## 2. Design Principles & Patterns
+
+To ensure the design is "extensible," we apply several software engineering patterns:
+
+### A. Strategy Pattern
+**Application**: Used for `ParsingStrategy` and `CrawlingStrategy`.
+**Why**: Different websites require different parsing logic (e.g., an HTML parser vs. a PDF parser). By encapsulating these in strategies, we can add new file-type support without modifying the core `CrawlerEngine`.
+
+### B. Factory Pattern
+**Application**: `ParserFactory` and `FetcherFactory`.
+**Why**: The system should decide at runtime which parser to use based on the `Content-Type` header of the HTTP response. The Factory decouples the selection logic from the execution logic.
+
+### C. Singleton Pattern
+**Application**: `ConfigurationManager` or `DatabaseConnection`.
+**Why**: Ensures that system-wide settings (like max threads or timeout limits) are consistent across all worker threads.
+
+### D. SOLID Principles
+- **Single Responsibility (SRP)**: The `Fetcher` only downloads; the `Parser` only extracts; the `UrlFrontier` only manages the queue.
+- **Open/Closed Principle**: The system is open for extension (adding new `IParser` implementations) but closed for modification of the `CrawlerEngine`.
+- **Dependency Inversion (DIP)**: The `CrawlerEngine` depends on interfaces (`IParser`, `IFetcher`) rather than concrete classes.
+
+---
+
+## 3. Class Structure & Relationships
+
+### Class Diagram (Conceptual)
+
+```text
++-------------------+          +-------------------+
+|   CrawlerEngine   | -------->|    UrlFrontier    |
++-------------------+          +-------------------+
+          |                             |
+          | (uses)                      | (manages)
+          v                             v
++-------------------+          +-------------------+
+|    IFetcher       |          |      URL          |
++-------------------+          +-------------------+
+          ^                             ^
+          |                             |
++-------------------+          +-------------------+
+|   HttpFetcher     |          |   VisitedSet      |
++-------------------+          +-------------------+
+          |
+          v
++-------------------+          +-------------------+
+|    IParser        | <--------|   ParserFactory   |
++-------------------+          +-------------------+
+          ^                             |
+          |                             |
+    +-----+-----+                       |
+    |           |                       |
++-----------+ +-----------+             |
+| HtmlParser| | PdfParser | <-----------+
++-----------+ +-----------+
+```
+
+### Component Definitions
+
+| Component | Responsibility | Key Methods |
+| :--- | :--- | :--- |
+| **UrlFrontier** | Manages the queue of pending URLs and tracks visited ones. | `add_url()`, `get_next_url()` |
+| **IFetcher** | Interface for downloading content. | `fetch(url)` |
+| **IParser** | Interface for extracting links/data. | `parse(content)` |
+| **ParserFactory** | Returns the appropriate parser based on content type. | `get_parser(content_type)` |
+| **CrawlerEngine** | The orchestrator that ties all components together. | `start_crawling()` |
+
+---
+
+## 4. Step-by-Step Logic & Code Walkthrough
+
+### Implementation
+
+```python
+from abc import ABC, abstractmethod
+from queue import Queue, Empty
+from threading import Thread, Lock
+import requests
+from bs4 import BeautifulSoup
+import time
+
+# --- Interfaces ---
+
+class IParser(ABC):
+    @abstractmethod
+    def parse(self, content: str):
+        pass
+
+class IFetcher(ABC):
+    @abstractmethod
+    def fetch(self, url: str) -> tuple:
+        pass
+
+# --- Concrete Implementations ---
+
+class HtmlParser(IParser):
+    def parse(self, content: str):
+        soup = BeautifulSoup(content, 'html.parser')
+        links = [a.get('href') for a in soup.find_all('a', href=True)]
+        return links
+
+class PdfParser(IParser):
+    def parse(self, content: str):
+        print("Parsing PDF content...")
+        return [] # Simplified for LLD
+
+class HttpFetcher(IFetcher):
+    def fetch(self, url: str):
+        try:
+            response = requests.get(url, timeout=5)
+            return response.text, response.headers.get('Content-Type', 'text/html')
+        except Exception as e:
+            print(f"Error fetching {url}: {e}")
+            return None, None
+
+class ParserFactory:
+    @staticmethod
+    def get_parser(content_type: str) -> IParser:
+        if 'text/html' in content_type:
+            return HtmlParser()
+        elif 'application/pdf' in content_type:
+            return PdfParser()
+        return None
+
+# --- Core System ---
+
+class UrlFrontier:
+    def __init__(self):
+        self.queue = Queue()
+        self.visited = set()
+        self.lock = Lock()
+
+    def add_url(self, url: str):
+        with self.lock:
+            if url not in self.visited:
+                self.visited.add(url)
+                self.queue.put(url)
+
+    def get_next_url(self):
+        try:
+            return self.queue.get(timeout=2)
+        except Empty:
+            return None
+
+class CrawlerEngine:
+    def __init__(self, fetcher: IFetcher, frontier: UrlFrontier, num_threads: int = 4):
+        self.fetcher = fetcher
+        self.frontier = frontier
+        self.num_threads = num_threads
+
+    def _worker(self):
+        while True:
+            url = self.frontier.get_next_url()
+            if url is None: break
+            
+            print(f"Crawling: {url}")
+            content, content_type = self.fetcher.fetch(url)
+            
+            if content:
+                parser = ParserFactory.get_parser(content_type)
+                if parser:
+                    links = parser.parse(content)
+                    for link in links:
+                        # In a real scenario, we'd normalize the URL here
+                        if link.startswith('http'):
+                            self.frontier.add_url(link)
+            
+            time.sleep(1) # Politeness delay
+
+    def start(self, seeds):
+        for seed in seeds:
+            self.frontier.add_url(seed)
+        
+        threads = []
+        for _ in range(self.num_threads):
+            t = Thread(target=self._worker)
+            t.start()
+            threads.append(t)
+        
+        for t in threads:
+            t.join()
+
+# --- Execution ---
+if __name__ == "__main__":
+    frontier = UrlFrontier()
+    fetcher = HttpFetcher()
+    engine = CrawlerEngine(fetcher, frontier, num_threads=2)
+    
+    # Start with a seed URL
+    engine.start(["https://example.com"])
+```
+
+### Logic Walkthrough
+1.  **Initialization**: The `CrawlerEngine` is initialized with a `Fetcher` and a `UrlFrontier`. This allows us to swap `HttpFetcher` for a `MockFetcher` during testing (Dependency Injection).
+2.  **Seeding**: Seed URLs are added to the `UrlFrontier`. The `visited` set prevents the crawler from entering infinite loops.
+3.  **Concurrency**: Multiple worker threads are spawned. Each thread polls the `UrlFrontier` for a new URL.
+4.  **Fetching & Factory**: The `HttpFetcher` retrieves the page. The `ParserFactory` inspects the `Content-Type` header to decide whether an `HtmlParser` or `PdfParser` should handle the data.
+5.  **Expansion**: The `IParser` extracts new links, which are fed back into the `UrlFrontier`, expanding the crawl horizon.
+6.  **Politeness**: A `time.sleep(1)` is implemented to avoid slamming a single server with requests.
+
+---
+
+## 5. Complexity & Performance Analysis
+
+### Time and Space Complexity
+
+| Metric | Complexity | Description |
+| :--- | :--- | :--- |
+| **Time Complexity** | $O(V + E)$ | Where $V$ is the number of unique pages (vertices) and $E$ is the number of links (edges). |
+| **Space Complexity** | $O(V)$ | The `visited` set must store every unique URL encountered to prevent duplicates. |
+| **Concurrency** | $O(T)$ | Throughput increases linearly with the number of threads $T$, until I/O or CPU saturation occurs. |
+
+### Real-World Production Applications
+1.  **Search Engines (Google/Bing)**: Use massively distributed crawlers. Instead of a local `Queue`, they use distributed messaging systems like **Apache Kafka**.
+2.  **Price Aggregators**: Use specialized `Parsers` for different e-commerce sites (Amazon, eBay) to extract pricing data into a structured database.
+3.  **SEO Audit Tools**: Use crawlers to find broken links (404s) and analyze metadata across thousands of pages of a corporate site.
+4.  **Web Archiving (Wayback Machine)**: Focuses on high-fidelity `Fetchers` that save the entire state of a page, including CSS and JS assets.""",
+    'solutions': """# System Design Document: Extensible Web Crawler
+
+## 1. Requirements & System Constraints
+
+The objective is to design a highly scalable, extensible web crawler capable of discovering and indexing billions of web pages while adhering to politeness protocols and maintaining high throughput.
+
+### 1.1 Functional Requirements
+- **Seed URL Processing**: Ability to start crawling from a predefined set of seed URLs.
+- **URL Frontier**: Manage a queue of URLs to be visited, supporting prioritization.
+- **Content Fetching**: Download page content via HTTP/HTTPS.
+- **Link Extraction**: Parse HTML to find and extract new URLs for further crawling.
+- **Content Deduplication**: Avoid crawling the same content multiple times (even if URLs differ).
+- **URL Deduplication**: Avoid visiting the same URL multiple times.
+- **Politeness**: Respect `robots.txt` and implement per-domain rate limiting.
+- **Extensibility**: Support for different content types (HTML, PDF, JSON), various storage backends, and custom parsing logic.
+
+### 1.2 Non-Functional Requirements
+- **Scalability**: Scale horizontally to handle billions of pages.
+- **Fault Tolerance**: Recover from network failures, timeouts, and crawler crashes.
+- **Robustness**: Handle malformed HTML, "spider traps" (infinite URL loops), and huge files.
+- **Efficiency**: Optimize bandwidth, CPU, and memory usage.
+
+### 1.3 Scale Estimations (High-Level)
+- **Target**: 1 Billion pages per month.
+- **Daily Throughput**: $\approx 33$ million pages/day.
+- **Per Second**: $\approx 385$ pages/second.
+- **Average Page Size**: 100 KB.
+- **Bandwidth Requirement**: $385 \times 100\text{ KB} \approx 38.5\text{ MB/s}$ (Continuous).
+- **Storage**: If storing metadata and a hash for 1 Billion pages, we need TBs of storage for the URL index.
+
+---
+
+## 2. High-Level Architecture
+
+The system follows a decoupled, producer-consumer architecture utilizing a distributed message queue to ensure extensibility and scalability.
+
+### 2.1 Component Diagram
+
+```mermaid
+graph TD
+    Seed[Seed URL List] --> Frontier
+    
+    subgraph "Crawler Orchestration"
+        Frontier[URL Frontier / Priority Queue] --> Fetcher[Distributed Fetchers]
+        Fetcher --> DNS[DNS Resolver Cache]
+        Fetcher --> Robots[Robots.txt Cache]
+    end
+
+    subgraph "Processing Pipeline (Extensible)"
+        Fetcher --> ParserInterface[Parser Interface]
+        ParserInterface --> HTMLParser[HTML Parser]
+        ParserInterface --> PDFParser[PDF Parser]
+        ParserInterface --> JSONParser[JSON Parser]
+    end
+
+    subgraph "Deduplication & Storage"
+        HTMLParser --> URLDup[URL Deduplicator]
+        HTMLParser --> ContentDup[Content Deduplicator]
+        URLDup --> Frontier
+        ContentDup --> Storage[Storage Layer]
+    end
+
+    Storage --> DB[(Document Store / Index)]
+    URLDup --> SeenDB[(URL Seen Set)]
+```
+
+### 2.2 Component Interactions
+1. **URL Frontier**: Stores URLs to be crawled. It prioritizes URLs based on page rank or freshness. It handles "politeness" by ensuring URLs from the same domain are not fetched simultaneously.
+2. **Distributed Fetchers**: Worker nodes that pick URLs from the Frontier, resolve DNS, check `robots.txt`, and download the raw bytes.
+3. **Extensible Parser**: A plugin-based system. Based on the `Content-Type` header from the Fetcher, the system routes the data to the appropriate parser (e.g., `HTMLParser`, `PDFParser`).
+4. **Deduplicators**: 
+    - **URL Deduplicator**: Uses a Bloom Filter or a distributed Key-Value store to check if a URL has been visited.
+    - **Content Deduplicator**: Uses SimHash or MinHash to detect near-duplicate content to avoid indexing mirrored sites.
+5. **Storage Layer**: An extensible sink that can write to an ElasticSearch index, a S3 data lake, or a relational DB.
+
+---
+
+## 3. Detailed Database Schema Design
+
+We use a hybrid approach: **NoSQL** for high-volume page data and **Key-Value stores** for fast lookups.
+
+### 3.1 URL Status Store (Key-Value / NoSQL)
+Used by the Frontier to track the state of every discovered URL.
+- **Table**: `url_metadata`
+- **Primary Key**: `url_hash` (SHA-256 of the URL)
+- **Fields**:
+    - `url`: String
+    - `status`: Enum (Pending, Crawling, Completed, Failed)
+    - `priority`: Integer
+    - `last_crawled_at`: Timestamp
+    - `depth`: Integer
+    - `etag`: String (for conditional GET requests)
+
+### 3.2 Content Store (Document Store - MongoDB/Cassandra)
+Stores the actual processed data.
+- **Table**: `page_content`
+- **Primary Key**: `url_hash`
+- **Fields**:
+    - `url`: String
+    - `title`: String
+    - `body_text`: Text
+    - `content_hash`: String (SimHash for deduplication)
+    - `metadata`: JSON (headers, timestamps)
+    - `created_at`: Timestamp
+
+### 3.3 Politeness Store (Redis)
+Tracks the last access time per domain to prevent DOS attacks.
+- **Key**: `last_access:{domain}`
+- **Value**: `timestamp`
+- **TTL**: Set to the required politeness delay (e.g., 1-5 seconds).
+
+### 3.4 Reasoning
+- **NoSQL (Cassandra/Mongo)**: Chosen for content because web pages have highly variable structures and require high write throughput.
+- **Redis**: Chosen for the politeness store and DNS cache due to sub-millisecond latency.
+- **Bloom Filter**: Used in-memory (or via RedisBloom) for the `SeenSet` to reduce DB hits for URL deduplication.
+
+---
+
+## 4. Core API Design
+
+While the crawler is primarily an internal system, an Administrative API is required for control and monitoring.
+
+### 4.1 Seed Management
+`POST /api/v1/seeds`
+- **Request**:
+  ```json
+  {
+    "urls": ["https://example.com", "https://wikipedia.org"],
+    "priority": 10,
+    "depth_limit": 5
+  }
+  ```
+- **Response**: `202 Accepted`
+
+### 4.2 Crawler Status
+`GET /api/v1/status/{url_hash}`
+- **Response**:
+  ```json
+  {
+    "url": "https://example.com",
+    "status": "Completed",
+    "last_crawled": "2023-10-27T10:00:00Z",
+    "depth": 1
+  }
+  ```
+
+### 4.3 System Metrics
+`GET /api/v1/metrics`
+- **Response**:
+  ```json
+  {
+    "pages_crawled_per_second": 412,
+    "frontier_size": 15000000,
+    "failure_rate": "0.02%",
+    "active_workers": 50
+  }
+  ```
+
+---
+
+## 5. Scalability & Advanced Topics
+
+### 5.1 Extensibility via Strategy Pattern
+To make the design extensible, we use the **Strategy Design Pattern** for Fetching and Parsing.
+
+```java
+interface ContentParser {
+    ParseResult parse(byte[] data);
+    boolean canHandle(String contentType);
+}
+
+class HTMLParser implements ContentParser { ... }
+class PDFParser implements ContentParser { ... }
+
+class ParserFactory {
+    List<ContentParser> plugins;
+    public ContentParser getParser(String contentType) {
+        return plugins.stream().filter(p -> p.canHandle(contentType)).findFirst().orElse(DefaultParser.INSTANCE);
+    }
+}
+```
+
+### 5.2 Distributed URL Frontier
+To prevent a single bottleneck, the Frontier is sharded by domain.
+- **Sharding Logic**: `shard_id = hash(domain) % total_shards`.
+- This ensures that all URLs for a specific domain are handled by the same queue/worker, making it easier to enforce politeness (rate limiting) without global locks.
+
+### 5.3 DNS Resolution Optimization
+DNS resolution is a major bottleneck.
+- **Local DNS Cache**: Implement a local cache on each fetcher node.
+- **Custom DNS Resolver**: Use an asynchronous DNS resolver to avoid blocking threads.
+
+### 5.4 Fault Tolerance & Reliability
+- **Checkpointing**: The Frontier persists its state to a distributed queue (e.g., Kafka) so that if a worker fails, the message is redelivered.
+- **Dead Letter Queue (DLQ)**: URLs that fail repeatedly (404, 500) are moved to a DLQ for analysis rather than clogging the main pipeline.
+- **Circuit Breaker**: If a specific domain returns a high rate of 5xx errors, the crawler trips a circuit breaker for that domain for a period of time.
+
+---
+
+## 6. Trade-off Analysis
+
+| Trade-off | Decision | Reasoning |
+| :--- | :--- | :--- |
+| **Consistency vs Availability** | **Availability (AP)** | In a web crawler, missing a few pages or indexing a slightly outdated version of a page is acceptable. High availability ensures the crawl continues. |
+| **Storage vs Compute** | **Storage Priority** | We store content hashes (SimHash) to avoid re-downloading and re-parsing similar pages, trading disk space for bandwidth and CPU. |
+| **BFS vs DFS** | **BFS (Breadth-First)** | Breadth-First Search is preferred to ensure a broad coverage of the web and to avoid getting stuck in deep "spider traps" of a single site. |
+| **Centralized vs Distributed Frontier** | **Distributed** | A centralized queue would become a bottleneck at $10^9$ pages. Sharding by domain enables horizontal scaling. |
+| **Strict vs Near Deduplication** | **Near Deduplication** | Exact hash matches fail if a page has a dynamic timestamp. SimHash allows us to identify "nearly identical" pages. |""",
 }

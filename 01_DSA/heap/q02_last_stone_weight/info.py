@@ -3,5 +3,222 @@ INFO = {
     'link': 'https://leetcode.com/problems/last-stone-weight/',
     'description': 'Last stone weight using max heap.',
     'groups': ['Heap / Priority Queue'],
-    'readme_content': '# Last Stone Weight\n\n## 1. Overview & Problem Explanation\n\nThe **Last Stone Weight** problem is a simulation challenge where we are given a collection of stones, each with a specific weight. The goal is to simulate a "smashing" process until either one stone remains or no stones are left.\n\n### The Rules of Smashing\n1. We always choose the **two heaviest stones** currently available. Let\'s call their weights $x$ and $y$, where $x \\le y$.\n2. **If $x == y$**: Both stones are completely destroyed.\n3. **If $x \\neq y$**: The stone with weight $x$ is destroyed, and the stone with weight $y$ is reduced to $y - x$. This new stone is then placed back into the collection.\n\n### Goal\nDetermine the weight of the last remaining stone. If no stones are left, return `0`.\n\n### Inputs, Outputs & Constraints\n- **Input**: An integer array `stones` (e.g., `[2, 7, 4, 1, 8, 1]`).\n- **Output**: A single integer representing the final stone\'s weight.\n- **Constraints**:\n    - `1 <= stones.length <= 30`\n    - `1 <= stones[i] <= 1000`\n- **Edge Cases**:\n    - Only one stone initially: The answer is that stone\'s weight.\n    - All stones destroy each other perfectly: The answer is `0`.\n    - All stones have the same weight.\n\n---\n\n## 2. Core Concepts & Data Structures\n\n### The Priority Queue (Max Heap)\nTo solve this problem efficiently, we need a way to repeatedly retrieve and remove the **two largest elements** and potentially insert a new value back into the collection.\n\nWhile we could sort the array after every smash, that would be computationally expensive. Instead, we use a **Max Heap**.\n\n**Why a Max Heap?**\n- **Efficient Extraction**: A Max Heap allows us to extract the maximum element in $O(\\log N)$ time.\n- **Efficient Insertion**: Inserting a new stone weight back into the heap also takes $O(\\log N)$ time.\n- **Dynamic Ordering**: Unlike a static sorted array, a heap maintains its partial ordering property automatically as elements are added or removed.\n\n### Implementation Detail (Python)\nPython\'s `heapq` module implements a **Min Heap** by default. To simulate a **Max Heap**, we multiply all stone weights by `-1` before pushing them into the heap. When we pop an element, we multiply it by `-1` again to restore the original positive weight.\n\n---\n\n## 3. Step-by-Step Logic\n\n### Optimal Approach: Max Heap Simulation\n\n1. **Initialization**: Transform the `stones` list into a Max Heap. (In Python: negate all values and call `heapq.heapify()`).\n2. **Simulation Loop**: While there is more than one stone in the heap:\n   - **Pop** the heaviest stone ($y$).\n   - **Pop** the second heaviest stone ($x$).\n   - **Compare**:\n     - If $y > x$, calculate the difference $y - x$ and **push** the result back into the heap.\n     - If $y == x$, do nothing (both are destroyed).\n3. **Final Result**: \n   - If the heap contains one element, return that element (negated back to positive).\n   - If the heap is empty, return `0`.\n\n### Dry Run Example\n**Input**: `stones = [2, 7, 4, 1, 8, 1]`\n\n1. **Heapify (Max Heap)**: `[-8, -7, -4, -2, -1, -1]`\n2. **Round 1**:\n   - Pop `-8` (8) and `-7` (7).\n   - Difference: $8 - 7 = 1$.\n   - Push `-1`. Heap: `[-4, -2, -1, -1, -1, -1]`\n3. **Round 2**:\n   - Pop `-4` (4) and `-2` (2).\n   - Difference: $4 - 2 = 2$.\n   - Push `-2`. Heap: `[-2, -1, -1, -1, -1, -1]`\n4. **Round 3**:\n   - Pop `-2` (2) and `-1` (1).\n   - Difference: $2 - 1 = 1$.\n   - Push `-1`. Heap: `[-1, -1, -1, -1, -1]`\n5. **Round 4**:\n   - Pop `-1` (1) and `-1` (1).\n   - Difference: 0. Nothing pushed back.\n   - Heap: `[-1, -1, -1]`\n6. **Round 5**:\n   - Pop `-1` (1) and `-1` (1).\n   - Difference: 0.\n   - Heap: `[-1]`\n7. **End**: Only one stone left. **Result: 1**.\n\n### Implementation\n\n```python\nimport heapq\n\ndef solve_optimal(stones):\n    # 1. Python heapq is a min-heap. \n    # To use it as a max-heap, negate all values.\n    max_heap = [-s for s in stones]\n    heapq.heapify(max_heap)\n    \n    # 2. Continue smashing until 0 or 1 stone remains\n    while len(max_heap) > 1:\n        # Extract the two heaviest stones\n        first = -heapq.heappop(max_heap)\n        second = -heapq.heappop(max_heap)\n        \n        # If they are not equal, push the difference back\n        if first != second:\n            heapq.heappush(max_heap, -(first - second))\n            \n    # 3. Return the last stone or 0 if none left\n    return -max_heap[0] if max_heap else 0\n```\n\n---\n\n## 4. Complexity Analysis\n\n| Approach | Time Complexity | Space Complexity | Reasoning |\n| :--- | :--- | :--- | :--- |\n| **Max Heap** | $O(N \\log N)$ | $O(N)$ | `heapify` takes $O(N)$. Each of the $N-1$ smashes involves `heappop` and `heappush`, both taking $O(\\log N)$. |\n\n- **Time Complexity**: We perform at most $N-1$ iterations. In each iteration, we perform heap operations that take logarithmic time relative to the number of stones. Thus, $O(N \\log N)$.\n- **Space Complexity**: $O(N)$ to store the stones within the heap structure.\n\n---\n\n## 5. Real-World Applications\n\nThe pattern used in this problem—**continuously processing the highest-priority item and updating the state**—is fundamental in many software systems:\n\n1. **Task Scheduling**: Operating systems use priority queues to manage process scheduling. The process with the highest priority is executed first; if its priority changes (or it\'s interrupted), it is re-inserted into the queue.\n2. **Load Balancing**: In distributed systems, a "Least Connections" or "Highest Capacity" algorithm can use a heap to track which server is currently best equipped to handle an incoming request.\n3. **Huffman Coding**: The algorithm used for lossless data compression builds a tree by repeatedly extracting the two symbols with the lowest frequencies (a Min Heap version of this problem) and merging them.\n4. **Dijkstra\'s Shortest Path Algorithm**: Uses a priority queue to always expand the node with the smallest current distance from the source.',
+    'readme_content': """# Last Stone Weight
+
+## 1. Overview & Problem Explanation
+
+The **Last Stone Weight** problem is a simulation challenge where we are given a collection of stones, each with a specific weight. The goal is to simulate a "smashing" process until either one stone remains or no stones are left.
+
+### The Rules of Smashing
+1. We always choose the **two heaviest stones** currently available. Let's call their weights $x$ and $y$, where $x \le y$.
+2. **If $x == y$**: Both stones are completely destroyed.
+3. **If $x \neq y$**: The stone with weight $x$ is destroyed, and the stone with weight $y$ is reduced to $y - x$. This new stone is then placed back into the collection.
+
+### Goal
+Determine the weight of the last remaining stone. If no stones are left, return `0`.
+
+### Inputs, Outputs & Constraints
+- **Input**: An integer array `stones` (e.g., `[2, 7, 4, 1, 8, 1]`).
+- **Output**: A single integer representing the final stone's weight.
+- **Constraints**:
+    - `1 <= stones.length <= 30`
+    - `1 <= stones[i] <= 1000`
+- **Edge Cases**:
+    - Only one stone initially: The answer is that stone's weight.
+    - All stones destroy each other perfectly: The answer is `0`.
+    - All stones have the same weight.
+
+---
+
+## 2. Core Concepts & Data Structures
+
+### The Priority Queue (Max Heap)
+To solve this problem efficiently, we need a way to repeatedly retrieve and remove the **two largest elements** and potentially insert a new value back into the collection.
+
+While we could sort the array after every smash, that would be computationally expensive. Instead, we use a **Max Heap**.
+
+**Why a Max Heap?**
+- **Efficient Extraction**: A Max Heap allows us to extract the maximum element in $O(\log N)$ time.
+- **Efficient Insertion**: Inserting a new stone weight back into the heap also takes $O(\log N)$ time.
+- **Dynamic Ordering**: Unlike a static sorted array, a heap maintains its partial ordering property automatically as elements are added or removed.
+
+### Implementation Detail (Python)
+Python's `heapq` module implements a **Min Heap** by default. To simulate a **Max Heap**, we multiply all stone weights by `-1` before pushing them into the heap. When we pop an element, we multiply it by `-1` again to restore the original positive weight.
+
+---
+
+## 3. Step-by-Step Logic
+
+### Optimal Approach: Max Heap Simulation
+
+1. **Initialization**: Transform the `stones` list into a Max Heap. (In Python: negate all values and call `heapq.heapify()`).
+2. **Simulation Loop**: While there is more than one stone in the heap:
+   - **Pop** the heaviest stone ($y$).
+   - **Pop** the second heaviest stone ($x$).
+   - **Compare**:
+     - If $y > x$, calculate the difference $y - x$ and **push** the result back into the heap.
+     - If $y == x$, do nothing (both are destroyed).
+3. **Final Result**: 
+   - If the heap contains one element, return that element (negated back to positive).
+   - If the heap is empty, return `0`.
+
+### Dry Run Example
+**Input**: `stones = [2, 7, 4, 1, 8, 1]`
+
+1. **Heapify (Max Heap)**: `[-8, -7, -4, -2, -1, -1]`
+2. **Round 1**:
+   - Pop `-8` (8) and `-7` (7).
+   - Difference: $8 - 7 = 1$.
+   - Push `-1`. Heap: `[-4, -2, -1, -1, -1, -1]`
+3. **Round 2**:
+   - Pop `-4` (4) and `-2` (2).
+   - Difference: $4 - 2 = 2$.
+   - Push `-2`. Heap: `[-2, -1, -1, -1, -1, -1]`
+4. **Round 3**:
+   - Pop `-2` (2) and `-1` (1).
+   - Difference: $2 - 1 = 1$.
+   - Push `-1`. Heap: `[-1, -1, -1, -1, -1]`
+5. **Round 4**:
+   - Pop `-1` (1) and `-1` (1).
+   - Difference: 0. Nothing pushed back.
+   - Heap: `[-1, -1, -1]`
+6. **Round 5**:
+   - Pop `-1` (1) and `-1` (1).
+   - Difference: 0.
+   - Heap: `[-1]`
+7. **End**: Only one stone left. **Result: 1**.
+
+### Implementation
+
+```python
+import heapq
+
+def solve_optimal(stones):
+    # 1. Python heapq is a min-heap. 
+    # To use it as a max-heap, negate all values.
+    max_heap = [-s for s in stones]
+    heapq.heapify(max_heap)
+    
+    # 2. Continue smashing until 0 or 1 stone remains
+    while len(max_heap) > 1:
+        # Extract the two heaviest stones
+        first = -heapq.heappop(max_heap)
+        second = -heapq.heappop(max_heap)
+        
+        # If they are not equal, push the difference back
+        if first != second:
+            heapq.heappush(max_heap, -(first - second))
+            
+    # 3. Return the last stone or 0 if none left
+    return -max_heap[0] if max_heap else 0
+```
+
+---
+
+## 4. Complexity Analysis
+
+| Approach | Time Complexity | Space Complexity | Reasoning |
+| :--- | :--- | :--- | :--- |
+| **Max Heap** | $O(N \log N)$ | $O(N)$ | `heapify` takes $O(N)$. Each of the $N-1$ smashes involves `heappop` and `heappush`, both taking $O(\log N)$. |
+
+- **Time Complexity**: We perform at most $N-1$ iterations. In each iteration, we perform heap operations that take logarithmic time relative to the number of stones. Thus, $O(N \log N)$.
+- **Space Complexity**: $O(N)$ to store the stones within the heap structure.
+
+---
+
+## 5. Real-World Applications
+
+The pattern used in this problem—**continuously processing the highest-priority item and updating the state**—is fundamental in many software systems:
+
+1. **Task Scheduling**: Operating systems use priority queues to manage process scheduling. The process with the highest priority is executed first; if its priority changes (or it's interrupted), it is re-inserted into the queue.
+2. **Load Balancing**: In distributed systems, a "Least Connections" or "Highest Capacity" algorithm can use a heap to track which server is currently best equipped to handle an incoming request.
+3. **Huffman Coding**: The algorithm used for lossless data compression builds a tree by repeatedly extracting the two symbols with the lowest frequencies (a Min Heap version of this problem) and merging them.
+4. **Dijkstra's Shortest Path Algorithm**: Uses a priority queue to always expand the node with the smallest current distance from the source.""",
+    'solutions': """# --- APPROACH 1: Naive (Brute Force) ---
+# Time Complexity: O(n^2 log n)
+# Space Complexity: O(1) or O(n) depending on the sorting implementation
+# This approach sorts the list of stones in every iteration to find the two heaviest stones.
+# After smashing them and inserting the remainder, it re-sorts the list.
+def solve_naive(stones):
+    stones = list(stones)
+    while len(stones) > 1:
+        stones.sort()
+        # Extract the two largest stones
+        s1 = stones.pop()
+        s2 = stones.pop()
+        
+        if s1 != s2:
+            # Push the difference back into the list
+            stones.append(abs(s1 - s2))
+            
+    return stones[0] if stones else 0
+
+# --- APPROACH 2: Optimal (Max Heap) ---
+# Time Complexity: O(n log n)
+# Space Complexity: O(n)
+# This approach uses a Max Heap to efficiently retrieve and remove the two heaviest stones.
+# In Python, heapq is a min-heap, so we multiply all stone weights by -1 to simulate a max-heap.
+# Heapification takes O(n), and each of the (n-1) smash operations takes O(log n).
+import heapq
+
+def solve_optimal(stones):
+    # Convert stones to negative to use heapq as a max heap
+    max_heap = [-s for s in stones]
+    heapq.heapify(max_heap)
+    
+    while len(max_heap) > 1:
+        # Pop the two heaviest stones (most negative)
+        first = -heapq.heappop(max_heap)
+        second = -heapq.heappop(max_heap)
+        
+        if first != second:
+            # Push the difference back as a negative value
+            heapq.heappush(max_heap, -(first - second))
+            
+    # The remaining stone is the absolute value of the last element, or 0 if empty
+    return -max_heap[0] if max_heap else 0
+
+# --- APPROACH 3: Secondary Language (Java Variant) ---
+\"\"\"
+package heap;
+
+import java.util.PriorityQueue;
+import java.util.Collections;
+
+public class LastStoneWeight {
+    /**
+     * Solves the Last Stone Weight problem using a PriorityQueue (Max Heap).
+     * Time Complexity: O(n log n)
+     * Space Complexity: O(n)
+     */
+    public int lastStoneWeight(int[] stones) {
+        if (stones == null || stones.length == 0) {
+            return 0;
+        }
+
+        // Max heap using Collections.reverseOrder()
+        PriorityQueue<Integer> maxHeap = new PriorityQueue<>(Collections.reverseOrder());
+        for (int stone : stones) {
+            maxHeap.offer(stone);
+        }
+
+        while (maxHeap.size() > 1) {
+            int stone1 = maxHeap.poll();
+            int stone2 = maxHeap.poll();
+
+            if (stone1 != stone2) {
+                maxHeap.offer(stone1 - stone2);
+            }
+        }
+
+        return maxHeap.isEmpty() ? 0 : maxHeap.poll();
+    }
+
+    public static void main(String[] args) {
+        LastStoneWeight solver = new LastStoneWeight();
+        int[] stones = {2, 7, 4, 1, 8, 1};
+        System.out.println("Last stone weight: " + solver.lastStoneWeight(stones)); // Output: 1
+    }
+}
+\"\"\"""",
 }

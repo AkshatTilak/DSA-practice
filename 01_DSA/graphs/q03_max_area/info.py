@@ -3,5 +3,287 @@ INFO = {
     'link': 'https://leetcode.com/problems/max-area-of-island/',
     'description': 'Max area island.',
     'groups': ['Graph', 'Matrix'],
-    'readme_content': '# Max Area of Island (q03_max_area)\n\n## 1. Overview & Problem Explanation\n\nThe **Max Area of Island** problem is a classic graph traversal challenge where we are given a 2D grid representing a map. In this map, `1` represents **land** and `0` represents **water**. An **island** is defined as a group of `1`s connected 4-directionally (horizontal or vertical).\n\nThe goal is to find the area of the largest island in the grid. The area of an island is simply the total number of cells that make up that island.\n\n### Inputs & Outputs\n- **Input**: A 2D integer array `grid` of size $m \\times n$ containing only $0$s and $1$s.\n- **Output**: An integer representing the maximum area found. If no islands exist, return $0$.\n\n### Constraints & Edge Cases\n- **Grid Dimensions**: $m$ and $n$ typically range from $1$ to $50$. This means the total number of cells is at most $2500$, making $O(m \\times n)$ solutions highly efficient.\n- **Edge Cases**:\n    - **Empty Grid**: If the grid is empty, the area is $0$.\n    - **All Water**: A grid full of $0$s should return $0$.\n    - **All Land**: A grid full of $1$s should return $m \\times n$.\n    - **Single Cell Island**: An island consisting of only one `1` surrounded by `0`s.\n    - **Disconnected Islands**: Multiple islands of varying sizes; we must ensure we only count the largest one.\n\n---\n\n## 2. Core Concepts & Data Structures\n\n### Connected Components in a Grid\nThis problem treats the 2D matrix as an **undirected graph**. Each cell $(r, c)$ is a node, and an edge exists between two cells if they are adjacent (up, down, left, right) and both contain a `1`. Finding the "Max Area" is equivalent to finding the **largest connected component** in this graph.\n\n### Algorithmic Choice: DFS vs. BFS\nTo explore an island and calculate its area, we can use either **Depth-First Search (DFS)** or **Breadth-First Search (BFS)**.\n\n- **DFS (Depth-First Search)**: Chosen for its simplicity in implementation via recursion. It dives deep into one branch of the island until it hits water or the boundary, then backtracks.\n- **BFS (Breadth-First Search)**: Uses a queue to explore the island layer by layer. It is useful if we were looking for the *shortest path*, but for area calculation, DFS is typically more concise.\n- **Visited Tracking**: To avoid counting the same cell multiple times (which would lead to an infinite loop), we must track visited cells. This can be done using a `set` of coordinates or by **modifying the input grid in-place** (changing `1` to `0` after visiting).\n\n---\n\n## 3. Step-by-Step Logic\n\n### The Optimal Approach (DFS)\n\n1. **Initialize**: Create a variable `max_area` set to $0$.\n2. **Iterate**: Loop through every cell in the $m \\times n$ grid using nested `for` loops.\n3. **Island Discovery**: When you encounter a cell with a value of `1`:\n    - This marks the discovery of a new island.\n    - Launch a **DFS function** starting from this cell to calculate the total area of this specific island.\n4. **DFS Traversal**:\n    - **Base Case**: If the current cell is out of bounds or the cell value is `0` (water), return an area of $0$.\n    - **Mark Visited**: Change the current cell from `1` to `0` (sink the island) to ensure it isn\'t visited again.\n    - **Recursive Exploration**: Call the DFS function for the four neighboring cells (Up, Down, Left, Right).\n    - **Summation**: The total area for the current cell is $1 + \\text{sum of areas from the 4 neighbors}$.\n5. **Update Maximum**: After the DFS returns the area of the current island, update `max_area = max(max_area, current_island_area)`.\n6. **Return**: Once all cells have been checked, return `max_area`.\n\n### Dry Run Example\n**Input Grid:**\n```text\n[\n  [1, 1, 0],\n  [1, 0, 0],\n  [0, 0, 1]\n]\n```\n1. Start at `(0, 0)`. It\'s a `1`. Start DFS.\n   - Mark `(0, 0)` as `0`. Area = 1.\n   - Move to `(0, 1)`. It\'s a `1`. Mark as `0`. Area = 1 + 1 = 2.\n   - Move to `(1, 0)`. It\'s a `1`. Mark as `0`. Area = 2 + 1 = 3.\n   - All neighbors of these cells are now `0` or out of bounds.\n   - `max_area` becomes $3$.\n2. Continue iterating. Next `1` found at `(2, 2)`. Start DFS.\n   - Mark `(2, 2)` as `0`. Area = 1.\n   - No neighbors are `1`.\n   - `max_area = max(3, 1) = 3`.\n3. Final Result: **3**.\n\n---\n\n## 4. Complexity Analysis\n\n| Approach | Time Complexity | Space Complexity | Reasoning |\n| :--- | :--- | :--- | :--- |\n| **Optimal (DFS)** | $O(M \\times N)$ | $O(M \\times N)$ | **Time**: We visit each cell exactly once. **Space**: In the worst case (all land), the recursion stack can go $M \\times N$ deep. |\n| **BFS** | $O(M \\times N)$ | $O(\\min(M, N))$ | **Time**: Each cell is processed once. **Space**: The queue stores the perimeter of the island, which in the worst case is proportional to the smaller dimension. |\n\n---\n\n## 5. Implementation\n\n```python\ndef solve(grid):\n    if not grid:\n        return 0\n    \n    rows, cols = len(grid), len(grid[0])\n    max_area = 0\n    \n    def dfs(r, c):\n        # Base case: Out of bounds or cell is water\n        if r < 0 or r >= rows or c < 0 or c >= cols or grid[r][c] == 0:\n            return 0\n        \n        # Mark as visited by "sinking" the land\n        grid[r][c] = 0\n        \n        # Recursively find area in 4 directions\n        area = 1\n        area += dfs(r + 1, c) # Down\n        area += dfs(r - 1, c) # Up\n        area += dfs(r, c + 1) # Right\n        area += dfs(r, c - 1) # Left\n        \n        return area\n\n    for r in range(rows):\n        for c in range(cols):\n            if grid[r][c] == 1:\n                # New island found, calculate its area and update global max\n                max_area = max(max_area, dfs(r, c))\n                \n    return max_area\n\n# --- Complexity Analysis ---\n# Time Complexity: O(R * C) - Each cell is visited once.\n# Space Complexity: O(R * C) - Recursive call stack depth in worst case.\n```\n\n---\n\n## 6. Real-World Applications\n\nThe pattern of finding connected components in a matrix is widely used in several industries:\n\n1. **Computer Vision (Image Processing)**: \n   - **Blob Detection**: Identifying contiguous regions of pixels with similar properties (e.g., identifying a white object on a black background).\n   - **Connected Component Labeling (CCL)**: Used in OCR (Optical Character Recognition) to separate individual characters from a scanned page.\n2. **Geographic Information Systems (GIS)**: \n   - Analyzing landmasses, calculating the size of forests, or identifying contiguous urban sprawl from satellite imagery.\n3. **Game Development**: \n   - **Procedural Map Generation**: Ensuring that generated landmasses are connected or calculating the size of separate "biomes."\n   - **Flood Fill Tool**: The "Paint Bucket" tool in drawing software uses this exact BFS/DFS logic to fill a closed area with color.\n4. **Network Analysis**: \n   - Detecting clusters of connected computers or users in a social network to identify community structures.',
+    'readme_content': """# Max Area of Island (q03_max_area)
+
+## 1. Overview & Problem Explanation
+
+The **Max Area of Island** problem is a classic graph traversal challenge where we are given a 2D grid representing a map. In this map, `1` represents **land** and `0` represents **water**. An **island** is defined as a group of `1`s connected 4-directionally (horizontal or vertical).
+
+The goal is to find the area of the largest island in the grid. The area of an island is simply the total number of cells that make up that island.
+
+### Inputs & Outputs
+- **Input**: A 2D integer array `grid` of size $m \times n$ containing only $0$s and $1$s.
+- **Output**: An integer representing the maximum area found. If no islands exist, return $0$.
+
+### Constraints & Edge Cases
+- **Grid Dimensions**: $m$ and $n$ typically range from $1$ to $50$. This means the total number of cells is at most $2500$, making $O(m \times n)$ solutions highly efficient.
+- **Edge Cases**:
+    - **Empty Grid**: If the grid is empty, the area is $0$.
+    - **All Water**: A grid full of $0$s should return $0$.
+    - **All Land**: A grid full of $1$s should return $m \times n$.
+    - **Single Cell Island**: An island consisting of only one `1` surrounded by `0`s.
+    - **Disconnected Islands**: Multiple islands of varying sizes; we must ensure we only count the largest one.
+
+---
+
+## 2. Core Concepts & Data Structures
+
+### Connected Components in a Grid
+This problem treats the 2D matrix as an **undirected graph**. Each cell $(r, c)$ is a node, and an edge exists between two cells if they are adjacent (up, down, left, right) and both contain a `1`. Finding the "Max Area" is equivalent to finding the **largest connected component** in this graph.
+
+### Algorithmic Choice: DFS vs. BFS
+To explore an island and calculate its area, we can use either **Depth-First Search (DFS)** or **Breadth-First Search (BFS)**.
+
+- **DFS (Depth-First Search)**: Chosen for its simplicity in implementation via recursion. It dives deep into one branch of the island until it hits water or the boundary, then backtracks.
+- **BFS (Breadth-First Search)**: Uses a queue to explore the island layer by layer. It is useful if we were looking for the *shortest path*, but for area calculation, DFS is typically more concise.
+- **Visited Tracking**: To avoid counting the same cell multiple times (which would lead to an infinite loop), we must track visited cells. This can be done using a `set` of coordinates or by **modifying the input grid in-place** (changing `1` to `0` after visiting).
+
+---
+
+## 3. Step-by-Step Logic
+
+### The Optimal Approach (DFS)
+
+1. **Initialize**: Create a variable `max_area` set to $0$.
+2. **Iterate**: Loop through every cell in the $m \times n$ grid using nested `for` loops.
+3. **Island Discovery**: When you encounter a cell with a value of `1`:
+    - This marks the discovery of a new island.
+    - Launch a **DFS function** starting from this cell to calculate the total area of this specific island.
+4. **DFS Traversal**:
+    - **Base Case**: If the current cell is out of bounds or the cell value is `0` (water), return an area of $0$.
+    - **Mark Visited**: Change the current cell from `1` to `0` (sink the island) to ensure it isn't visited again.
+    - **Recursive Exploration**: Call the DFS function for the four neighboring cells (Up, Down, Left, Right).
+    - **Summation**: The total area for the current cell is $1 + \text{sum of areas from the 4 neighbors}$.
+5. **Update Maximum**: After the DFS returns the area of the current island, update `max_area = max(max_area, current_island_area)`.
+6. **Return**: Once all cells have been checked, return `max_area`.
+
+### Dry Run Example
+**Input Grid:**
+```text
+[
+  [1, 1, 0],
+  [1, 0, 0],
+  [0, 0, 1]
+]
+```
+1. Start at `(0, 0)`. It's a `1`. Start DFS.
+   - Mark `(0, 0)` as `0`. Area = 1.
+   - Move to `(0, 1)`. It's a `1`. Mark as `0`. Area = 1 + 1 = 2.
+   - Move to `(1, 0)`. It's a `1`. Mark as `0`. Area = 2 + 1 = 3.
+   - All neighbors of these cells are now `0` or out of bounds.
+   - `max_area` becomes $3$.
+2. Continue iterating. Next `1` found at `(2, 2)`. Start DFS.
+   - Mark `(2, 2)` as `0`. Area = 1.
+   - No neighbors are `1`.
+   - `max_area = max(3, 1) = 3`.
+3. Final Result: **3**.
+
+---
+
+## 4. Complexity Analysis
+
+| Approach | Time Complexity | Space Complexity | Reasoning |
+| :--- | :--- | :--- | :--- |
+| **Optimal (DFS)** | $O(M \times N)$ | $O(M \times N)$ | **Time**: We visit each cell exactly once. **Space**: In the worst case (all land), the recursion stack can go $M \times N$ deep. |
+| **BFS** | $O(M \times N)$ | $O(\min(M, N))$ | **Time**: Each cell is processed once. **Space**: The queue stores the perimeter of the island, which in the worst case is proportional to the smaller dimension. |
+
+---
+
+## 5. Implementation
+
+```python
+def solve(grid):
+    if not grid:
+        return 0
+    
+    rows, cols = len(grid), len(grid[0])
+    max_area = 0
+    
+    def dfs(r, c):
+        # Base case: Out of bounds or cell is water
+        if r < 0 or r >= rows or c < 0 or c >= cols or grid[r][c] == 0:
+            return 0
+        
+        # Mark as visited by "sinking" the land
+        grid[r][c] = 0
+        
+        # Recursively find area in 4 directions
+        area = 1
+        area += dfs(r + 1, c) # Down
+        area += dfs(r - 1, c) # Up
+        area += dfs(r, c + 1) # Right
+        area += dfs(r, c - 1) # Left
+        
+        return area
+
+    for r in range(rows):
+        for c in range(cols):
+            if grid[r][c] == 1:
+                # New island found, calculate its area and update global max
+                max_area = max(max_area, dfs(r, c))
+                
+    return max_area
+
+# --- Complexity Analysis ---
+# Time Complexity: O(R * C) - Each cell is visited once.
+# Space Complexity: O(R * C) - Recursive call stack depth in worst case.
+```
+
+---
+
+## 6. Real-World Applications
+
+The pattern of finding connected components in a matrix is widely used in several industries:
+
+1. **Computer Vision (Image Processing)**: 
+   - **Blob Detection**: Identifying contiguous regions of pixels with similar properties (e.g., identifying a white object on a black background).
+   - **Connected Component Labeling (CCL)**: Used in OCR (Optical Character Recognition) to separate individual characters from a scanned page.
+2. **Geographic Information Systems (GIS)**: 
+   - Analyzing landmasses, calculating the size of forests, or identifying contiguous urban sprawl from satellite imagery.
+3. **Game Development**: 
+   - **Procedural Map Generation**: Ensuring that generated landmasses are connected or calculating the size of separate "biomes."
+   - **Flood Fill Tool**: The "Paint Bucket" tool in drawing software uses this exact BFS/DFS logic to fill a closed area with color.
+4. **Network Analysis**: 
+   - Detecting clusters of connected computers or users in a social network to identify community structures.""",
+    'solutions': """# --- APPROACH 1: Naive (Brute Force) ---
+# Time Complexity: O(R * C)
+# Space Complexity: O(R * C)
+# This approach uses a separate 'visited' set to keep track of explored land cells, 
+# ensuring the original input grid remains immutable. It uses Depth First Search (DFS) 
+# to explore each island fully.
+from typing import List
+
+def solve_naive(grid: List[List[int]]) -> int:
+    if not grid or not grid[0]:
+        return 0
+    
+    rows, cols = len(grid), len(grid[0])
+    visited = set()
+    
+    def dfs(r, c):
+        # Boundary checks, water check, and visited check
+        if (r < 0 or r >= rows or c < 0 or c >= cols or 
+            grid[r][c] == 0 or (r, c) in visited):
+            return 0
+        
+        visited.add((r, c))
+        # Explore all 4 directions and sum the area
+        return (1 + dfs(r + 1, c) + 
+                    dfs(r - 1, c) + 
+                    dfs(r, c + 1) + 
+                    dfs(r, c - 1))
+
+    max_area = 0
+    for r in range(rows):
+        for c in range(cols):
+            # Start a DFS if we find land that hasn't been visited
+            if grid[r][c] == 1 and (r, c) not in visited:
+                max_area = max(max_area, dfs(r, c))
+                
+    return max_area
+
+# --- APPROACH 2: Optimal (In-place DFS) ---
+# Time Complexity: O(R * C)
+# Space Complexity: O(R * C)
+# This approach is optimal as it minimizes auxiliary space by modifying the input grid 
+# directly (often called 'sinking' the island). By flipping 1s to 0s as we visit them, 
+# we eliminate the need for a separate visited set. The time complexity remains linear 
+# relative to the number of cells, and the space complexity is determined by the 
+# recursion stack in the worst case (an island covering the entire grid).
+from typing import List
+
+def solve_optimal(grid: List[List[int]]) -> int:
+    if not grid or not grid[0]:
+        return 0
+    
+    rows, cols = len(grid), len(grid[0])
+    
+    def dfs(r, c):
+        # Base case: boundary check or cell is water (0)
+        if r < 0 or r >= rows or c < 0 or c >= cols or grid[r][c] == 0:
+            return 0
+        
+        # Sink the land: mark as visited by changing 1 to 0
+        grid[r][c] = 0
+        
+        # Sum the current cell and the result of recursive calls to neighbors
+        return (1 + dfs(r + 1, c) + 
+                    dfs(r - 1, c) + 
+                    dfs(r, c + 1) + 
+                    dfs(r, c - 1))
+
+    max_area = 0
+    for r in range(rows):
+        for c in range(cols):
+            # Only start DFS if the cell is land
+            if grid[r][c] == 1:
+                max_area = max(max_area, dfs(r, c))
+                
+    return max_area
+
+# --- APPROACH 3: Secondary Language (Java Variant) ---
+\"\"\"
+package graphs;
+
+public class MaxArea {
+    /**
+     * Computes the maximum area of an island in a 2D binary grid.
+     * Time Complexity: O(R * C)
+     * Space Complexity: O(R * C) due to recursion stack.
+     */
+    public int maxAreaOfIsland(int[][] grid) {
+        if (grid == null || grid.length == 0) {
+            return 0;
+        }
+        
+        int rows = grid.length;
+        int cols = grid[0].length;
+        int maxArea = 0;
+        
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < cols; c++) {
+                if (grid[r][c] == 1) {
+                    maxArea = Math.max(maxArea, dfs(grid, r, c));
+                }
+            }
+        }
+        
+        return maxArea;
+    }
+    
+    private int dfs(int[][] grid, int r, int c) {
+        // Boundary and water checks
+        if (r < 0 || r >= grid.length || c < 0 || c >= grid[0].length || grid[r][c] == 0) {
+            return 0;
+        }
+        
+        // Mark as visited (sink the island)
+        grid[r][c] = 0;
+        
+        // Recursively visit all 4 directions
+        int area = 1;
+        area += dfs(grid, r + 1, c);
+        area += dfs(grid, r - 1, c);
+        area += dfs(grid, r, c + 1);
+        area += dfs(grid, r, c - 1);
+        
+        return area;
+    }
+
+    public static void main(String[] args) {
+        MaxArea solver = new MaxArea();
+        int[][] grid = {
+            {0,0,1,0,0,0,0,1,0,0,0,0,0},
+            {0,0,0,0,0,0,0,1,1,1,0,0,0},
+            {0,1,1,0,1,0,0,1,0,0,0,0,0},
+            {0,1,0,0,1,0,0,1,1,0,0,0,0},
+            {0,1,0,0,1,0,0,1,0,0,0,0,0},
+            {0,0,0,0,0,0,0,0,0,0,1,1,0},
+            {0,0,0,0,0,0,0,0,0,0,1,1,0},
+            {0,0,0,0,0,0,0,0,0,0,0,0,0}
+        };
+        System.out.println("Max Area: " + solver.maxAreaOfIsland(grid)); // Expected: 6
+    }
+}
+\"\"\"""",
 }
