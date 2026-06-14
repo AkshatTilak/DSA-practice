@@ -77,9 +77,12 @@ def render_dashboard(initialized_map, all_group_data, total_challenges):
                         else:
                             st.session_state.selected_group = g_name
                             st.session_state.selected_module = m_key
-                            # Reset cascading selectboxes
-                            if "module_selector" in st.session_state:
-                                st.session_state.module_selector = m_key
+                        
+                        # Reset selectbox keys from session state so they get re-initialized on rerun
+                        st.session_state.pop("module_selector", None)
+                        st.session_state.pop("group_selector", None)
+                        st.session_state.pop("topic_selector", None)
+                        st.session_state.pop("challenge_selector", None)
                         st.rerun()
     
     st.markdown("---")
@@ -208,13 +211,11 @@ def render_dashboard(initialized_map, all_group_data, total_challenges):
                     st.session_state.selected_challenge = item["c_key"]
                     st.session_state.view_mode = "Practice Sandbox"
                     
-                    # Update widget keys directly in session state
-                    if "module_selector" in st.session_state:
-                        st.session_state.module_selector = item["m_key"]
-                    if "topic_selector" in st.session_state:
-                        st.session_state.topic_selector = item["t_key"]
-                    if "challenge_selector" in st.session_state:
-                        st.session_state.challenge_selector = item["c_key"]
+                    # Reset selectbox keys from session state so they get re-initialized on rerun
+                    st.session_state.pop("module_selector", None)
+                    st.session_state.pop("topic_selector", None)
+                    st.session_state.pop("challenge_selector", None)
+                    st.session_state.pop("group_selector", None)
                     
                     st.rerun()
             st.markdown("<hr style='margin:4px 0; border-color:#1E293B;'/>", unsafe_allow_html=True)

@@ -1,4 +1,5 @@
 import streamlit as st
+from streamlit_ace import st_ace
 import os
 import sys
 import subprocess
@@ -108,11 +109,18 @@ def render_sandbox(
                 st.caption("Write your implementation below. The test cases will execute directly against this structure:")
                 
                 # Use a challenge-specific key to force Streamlit to recreate/reset the text area when the challenge changes
-                user_code = st.text_area(
-                    "Python Editor", 
-                    value=st.session_state.sandbox_code, 
-                    height=300, 
-                    label_visibility="collapsed",
+                user_code = st_ace(
+                    value=st.session_state.sandbox_code,
+                    language="python",
+                    theme="tomorrow_night",
+                    keybinding="vscode",
+                    tab_size=4,
+                    font_size=14,
+                    show_gutter=True,
+                    show_print_margin=False,
+                    wrap=True,
+                    auto_update=False,
+                    height=350,
                     key=f"code_editor_{selected_challenge_key}"
                 )
                 st.session_state.sandbox_code = user_code
@@ -173,12 +181,18 @@ def render_sandbox(
                 st.markdown("#### Design Architecture Sandbox")
                 st.caption("Outline your high-level system components, DB design, API schemas, and load management:")
                 
-                user_design = st.text_area(
-                    "System Design Draft",
-                    value=st.session_state.sandbox_code,
-                    placeholder="# 1. Requirements & System SLAs\n# 2. System Architecture & Component Mapping\n# 3. Database Schema Layout\n# 4. Asynchronous Queue Scaling & Retries...",
-                    height=350,
-                    label_visibility="collapsed",
+                user_design = st_ace(
+                    value=st.session_state.sandbox_code if st.session_state.sandbox_code else "# 1. Requirements & System SLAs\n# 2. System Architecture & Component Mapping\n# 3. Database Schema Layout\n# 4. Asynchronous Queue Scaling & Retries...",
+                    language="markdown",
+                    theme="tomorrow_night",
+                    keybinding="vscode",
+                    tab_size=4,
+                    font_size=14,
+                    show_gutter=True,
+                    show_print_margin=False,
+                    wrap=True,
+                    auto_update=False,
+                    height=400,
                     key=f"design_editor_{selected_challenge_key}"
                 )
                 st.session_state.sandbox_code = user_design
