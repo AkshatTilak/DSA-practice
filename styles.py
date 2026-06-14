@@ -302,6 +302,72 @@ textarea {
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
+/* ─── Floating AI Coach Chatbot Overlay (Native Container) ─── */
+.st-key-coach_panel_container {
+    position: fixed !important;
+    bottom: 90px !important;
+    right: 24px !important;
+    width: 380px !important;
+    height: 480px !important;
+    max-height: 480px !important;
+    z-index: 999998 !important;
+    background: #0F131E !important;
+    border: 1px solid #2D3748 !important;
+    border-radius: 16px !important;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(79, 70, 229, 0.1) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    padding: 12px !important;
+    margin: 0 !important;
+    animation: coachSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Floating circular trigger button styling */
+.st-key-floating_ai_coach_trigger {
+    position: fixed !important;
+    bottom: 24px !important;
+    right: 24px !important;
+    z-index: 999999 !important;
+}
+
+.st-key-floating_ai_coach_trigger button {
+    width: 56px !important;
+    height: 56px !important;
+    border-radius: 50% !important;
+    background: linear-gradient(135deg, #4F46E5, #6366F1) !important;
+    color: white !important;
+    font-size: 24px !important;
+    border: 1px solid #818CF8 !important;
+    box-shadow: 0 8px 25px rgba(79, 70, 229, 0.4) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    padding: 0 !important;
+}
+
+.st-key-floating_ai_coach_trigger button:hover {
+    transform: scale(1.1) rotate(5deg) !important;
+    box-shadow: 0 12px 30px rgba(79, 70, 229, 0.6) !important;
+    border-color: #A5B4FC !important;
+}
+
+.st-key-floating_ai_coach_trigger button:active {
+    transform: scale(0.95) !important;
+}
+
+/* Animate the overlay entry */
+@keyframes coachSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
 
 </style>
 """

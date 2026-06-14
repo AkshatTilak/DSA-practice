@@ -10,20 +10,14 @@ from helpers import (
 
 
 def render_dashboard(initialized_map, all_group_data, total_challenges):
-    # Hero Section with columns to support Ask Coach button on top
-    col_hero_text, col_hero_btn = st.columns([7.8, 2.2])
-    with col_hero_text:
-        st.markdown("""
-        <div class='hero-section' style='text-align: left; margin-bottom: 0; padding: 25px;'>
-            <div class='hero-title' style='font-size: 1.8rem;'>🧠 Interview Prep Vault</div>
-            <div class='hero-subtitle' style='font-size: 0.95rem; max-width: 100%; margin: 0;'>Browse, filter, and track your progress across DSA, ML, LLD, and HLD. Click any group card to filter challenges instantly.</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with col_hero_btn:
-        st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
-        if st.button("💬 Ask AI Study Coach", key="ask_coach_dashboard_hero", use_container_width=True, type="primary"):
-            st.session_state.show_ai_coach = not st.session_state.get("show_ai_coach", False)
-            st.rerun()
+    print("[LOG] render_dashboard executed - no buttons next to headings")
+    # Hero Section
+    st.markdown("""
+    <div class='hero-section' style='text-align: left; margin-bottom: 0; padding: 25px;'>
+        <div class='hero-title' style='font-size: 1.8rem;'>🧠 Interview Prep Vault</div>
+        <div class='hero-subtitle' style='font-size: 0.95rem; max-width: 100%; margin: 0;'>Browse, filter, and track your progress across DSA, ML, LLD, and HLD. Click any group card to filter challenges instantly.</div>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Stats Row
     easy_count = sum(1 for m in CHALLENGES_DB for t in CHALLENGES_DB[m] for c in CHALLENGES_DB[m][t] if CHALLENGES_DB[m][t][c].get("difficulty") == "Easy")

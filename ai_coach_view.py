@@ -124,7 +124,7 @@ def get_available_groups() -> list:
     ]
 
 # ─────────────────────────────────────────────────
-# SIDE PANEL AI COACH VIEW (NON-MODAL)
+# FLOATING CHATBOT OVERLAY AI COACH VIEW
 # ─────────────────────────────────────────────────
 
 def render_ai_coach_panel(
@@ -137,55 +137,73 @@ def render_ai_coach_panel(
     selected_model,
     current_view
 ):
-    # Panel Header card
+    print(f"[LOG] render_ai_coach_panel executed - native container overlay - view: {current_view}")
     if current_view == "Practice Sandbox":
         subtitle_text = f"Answering: {clean_name(selected_challenge_key)}"
     else:
         subtitle_text = "Browsing Explore Dashboard"
 
-    st.markdown(f"""
-    <div style='background-color: #111827; border: 1px solid #1E293B; border-radius: 12px; padding: 15px; margin-bottom: 12px;'>
-        <div style='font-size: 1.1rem; font-weight: 600; color: #F8FAFC;'>💬 AI Study Coach</div>
-        <p style='font-size: 0.78rem; color: #94A3B8; margin: 4px 0 0 0;'>
-            {subtitle_text}
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+    # Render inside a keyed container
+    with st.container(key="coach_panel_container"):
+        # Header block
+        st.markdown(f"""
+        <div style="background: linear-gradient(135deg, #1E1B4B, #312E81); padding: 12px 16px; border-bottom: 1px solid #3730A3; border-radius: 14px 14px 0 0; margin: -12px -12px 12px -12px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; flex-direction: column;">
+                <span style="color: #F8FAFC; font-weight: 600; font-size: 0.95rem;">💬 AI Study Coach</span>
+                <span style="color: #A5B4FC; font-size: 0.72rem;">{subtitle_text}</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
-    # Close button in panel
-    if st.button("❌ Close Coach", key="close_coach_panel_btn", use_container_width=True):
-        st.session_state.show_ai_coach = False
-        st.rerun()
+        # Message List Container
+        with st.container(height=320, border=False):
+            if not st.session_state.chat_history:
+                welcome = (
+                    "Hello! I am your AI Study Coach. 🧠\n\n"
+                    "I can help you with coding challenges, design patterns, "
+                    "systems scaling, or ML concepts.\n\n"
+                )
+                if current_view == "Practice Sandbox":
+                    welcome += (
+                        f"Currently, you are looking at "
+                        f"**{clean_name(selected_challenge_key)}**. "
+                        "Ask me for a hint, complexity analysis, or conceptual guide!"
+                    )
+                else:
+                    welcome += (
+                        "Ask me any concept explanation, search for "
+                        "challenges by group, or list available groups to start!"
+                    )
+                st.chat_message("assistant", avatar="🤖").markdown(welcome)
+            
+            for msg in st.session_state.chat_history:
+                role = msg["role"]
+                avatar = "👤" if role == "user" else "🤖"
+                st.chat_message(role, avatar=avatar).markdown(msg["content"])
 
-    # Error check for Gemini API key
-    if not api_key:
-        st.warning("⚠️ **Gemini API Key Required**\nPlease enter your API key in the sidebar settings or define it as `API_KEY` in your `.env` file.")
-        return
-
-    # Scrollable chat messages container
-    chat_container = st.container(height=420)
-    with chat_container:
-        if not st.session_state.chat_history:
-            welcome_msg = (
-                "Hello! I am your AI Study Coach. 🧠\n\n"
-                "I can help you with coding challenges, design patterns, systems scaling, or ML concepts.\n\n"
-            )
-            if current_view == "Practice Sandbox":
-                welcome_msg += f"Currently, you are looking at **{clean_name(selected_challenge_key)}**. Ask me for a hint, complexity analysis, or conceptual guide!"
-            else:
-                welcome_msg += "Ask me any concept explanation, search for challenges by group, or list available groups to start!"
-            st.chat_message("assistant").write(welcome_msg)
+        # Input Row
+        ci_col1, ci_col2 = st.columns([5, 1])
+        with ci_col2:
+            if st.button("✕", key="close_coach_panel_btn", help="Close AI Coach", use_container_width=True):
+                st.session_state.show_ai_coach = False
+                st.rerun()
         
-        for msg in st.session_state.chat_history:
-            with st.chat_message(msg["role"]):
-                st.write(msg["content"])
+        with ci_col1:
+            if not api_key:
+                st.info("⚠️ Gemini API Key Required")
+                user_message = None
+            else:
+                user_message = st.text_input(
+                    "Message",
+                    placeholder="Ask a hint, search groups...",
+                    key="panel_chat_input",
+                    label_visibility="collapsed"
+                )
 
-    # Chat Input Field
-    if user_message := st.chat_input("Ask a hint, search groups...", key="panel_chat_input"):
-        with chat_container:
-            with st.chat_message("user"):
-                st.write(user_message)
-        st.session_state.chat_history.append({"role": "user", "content": user_message})
+    # Process message submission
+    if user_message and user_message.strip():
+        processed_message = user_message.strip()
+        st.session_state.chat_history.append({"role": "user", "content": processed_message})
 
         # Dynamic System Instructions
         if current_view == "Practice Sandbox" and challenge_info:
@@ -228,7 +246,7 @@ Guidelines:
 4. You have tools to search the system database for other questions, details, and groups. Use them if the user asks.
 """
 
-        # Send message to Gemini API with automatic tool execution
+        # Send message to Gemini API
         try:
             genai.configure(api_key=api_key)
             model = genai.GenerativeModel(
@@ -237,7 +255,6 @@ Guidelines:
                 tools=[get_question_details, get_questions_by_group, get_available_groups]
             )
 
-            # Reconstruct text turn history for the API
             gemini_history = []
             for h in st.session_state.chat_history[:-1]:
                 gemini_history.append({
@@ -247,16 +264,31 @@ Guidelines:
 
             with st.spinner("AI thinking..."):
                 chat = model.start_chat(history=gemini_history, enable_automatic_function_calling=True)
-                response = chat.send_message(user_message)
-                ai_response = response.text
-
-            with chat_container:
-                with st.chat_message("assistant"):
-                    st.write(ai_response)
+                response = chat.send_message(processed_message)
+                
+                # Extract text safely from response candidates and parts
+                ai_response = ""
+                if hasattr(response, "candidates") and response.candidates:
+                    candidate = response.candidates[0]
+                    if hasattr(candidate, "content") and candidate.content:
+                        parts = candidate.content.parts
+                        text_parts = [p.text for p in parts if hasattr(p, "text") and p.text]
+                        ai_response = "\n".join(text_parts)
+                
+                if not ai_response:
+                    try:
+                        ai_response = response.text
+                    except Exception:
+                        ai_response = "I have processed your request, but did not receive a text response."
 
             st.session_state.chat_history.append({"role": "assistant", "content": ai_response})
+            del st.session_state["panel_chat_input"]
             st.rerun()
 
         except Exception as e:
-            st.error(f"Failed to communicate with Gemini API: {str(e)}")
-            st.warning("Hint: If you hit a 404/model not found error, try changing the model selection in the sidebar.")
+            st.session_state.chat_history.append({
+                "role": "assistant",
+                "content": f"⚠️ Error: {str(e)}\n\nHint: If you hit a 404/model not found error, try changing the model selection in the sidebar."
+            })
+            del st.session_state["panel_chat_input"]
+            st.rerun()

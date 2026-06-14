@@ -35,8 +35,8 @@ def render_sandbox(
         gm = get_group_meta(g)
         group_pills += f"<span style='background:{gm['color']}20; color:{gm['color']}; padding:3px 8px; border-radius:4px; font-size:0.75rem; margin-right:4px;'>{gm['emoji']} {g}</span>"
     
-    # Header card with columns to support Ask Coach button on top
-    col_sh1, col_sh2 = st.columns([7.8, 2.2])
+    # Header card with columns
+    col_sh1, col_sh2 = st.columns([8, 2])
     with col_sh1:
         st.markdown(f"""
         <div style='background: linear-gradient(135deg, #0F131E, #1E1B4B20); border: 1px solid #1E293B; padding: 18px 22px; border-radius: 10px; margin-bottom: 20px;'>
@@ -49,9 +49,6 @@ def render_sandbox(
         """, unsafe_allow_html=True)
     with col_sh2:
         st.markdown(f"<div style='text-align: right; margin-bottom: 12px;'>{badge_html}</div>", unsafe_allow_html=True)
-        if st.button("💬 Ask AI Study Coach", key="ask_coach_sandbox_header", use_container_width=True, type="primary"):
-            st.session_state.show_ai_coach = not st.session_state.get("show_ai_coach", False)
-            st.rerun()
 
     if not is_challenge_active:
         st.markdown(f"""

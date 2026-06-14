@@ -17,6 +17,21 @@ if os.path.exists(".env"):
 
 import importlib
 import questions_db
+import styles
+import helpers
+import dashboard_view
+import sandbox_view
+import ai_coach_view
+
+# Force reload of custom modules on each rerun to avoid caching issues
+importlib.reload(styles)
+importlib.reload(helpers)
+importlib.reload(dashboard_view)
+importlib.reload(sandbox_view)
+importlib.reload(ai_coach_view)
+
+print("[LOG] app.py loaded - styles, helpers, dashboard_view, sandbox_view, and ai_coach_view reloaded successfully.")
+
 from questions_db import CHALLENGES_DB
 from styles import CSS_STYLING
 from helpers import (
@@ -261,40 +276,34 @@ st.session_state.selected_model = selected_model
 # ─────────────────────────────────────────────────
 challenge_info = CHALLENGES_DB[st.session_state.selected_module][st.session_state.selected_topic][st.session_state.selected_challenge]
 
-if st.session_state.get("show_ai_coach", False):
-    col_main, col_chat = st.columns([7.2, 2.8])
-    with col_main:
-        if st.session_state.view_mode == "Explore Dashboard":
-            render_dashboard(initialized_map, all_group_data, total_challenges)
-        else:
-            render_sandbox(
-                st.session_state.selected_module,
-                st.session_state.selected_topic,
-                st.session_state.selected_challenge,
-                challenge_info,
-                is_challenge_active
-            )
-    with col_chat:
-        render_ai_coach_panel(
-            st.session_state.selected_module,
-            st.session_state.selected_topic,
-            st.session_state.selected_challenge,
-            challenge_info if st.session_state.view_mode == "Practice Sandbox" else None,
-            is_challenge_active if st.session_state.view_mode == "Practice Sandbox" else False,
-            api_key,
-            selected_model,
-            current_view=st.session_state.view_mode
-        )
+# Main content always renders full-width
+if st.session_state.view_mode == "Explore Dashboard":
+    render_dashboard(initialized_map, all_group_data, total_challenges)
 else:
-    if st.session_state.view_mode == "Explore Dashboard":
-        render_dashboard(initialized_map, all_group_data, total_challenges)
-    else:
-        render_sandbox(
-            st.session_state.selected_module,
-            st.session_state.selected_topic,
-            st.session_state.selected_challenge,
-            challenge_info,
-            is_challenge_active
-        )
+    render_sandbox(
+        st.session_state.selected_module,
+        st.session_state.selected_topic,
+        st.session_state.selected_challenge,
+        challenge_info,
+        is_challenge_active
+    )
+
+# AI Coach renders as a floating overlay (doesn't affect main layout)
+if st.session_state.get("show_ai_coach", False):
+    render_ai_coach_panel(
+        st.session_state.selected_module,
+        st.session_state.selected_topic,
+        st.session_state.selected_challenge,
+        challenge_info if st.session_state.view_mode == "Practice Sandbox" else None,
+        is_challenge_active if st.session_state.view_mode == "Practice Sandbox" else False,
+        api_key,
+        selected_model,
+        current_view=st.session_state.view_mode
+    )
+
+# Floating trigger button at bottom right (always stays there)
+if st.button("🧠", key="floating_ai_coach_trigger", help="Toggle AI Study Coach"):
+    st.session_state.show_ai_coach = not st.session_state.get("show_ai_coach", False)
+    st.rerun()
 
 
