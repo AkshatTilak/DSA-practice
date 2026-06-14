@@ -132,6 +132,7 @@ def parse_solutions(solutions_content):
     """
     Parses solutions_content into separate syntax-highlighted tabs
     by splitting on '# --- APPROACH' or '# Approach' indicators.
+    Also dynamically generates a clean Comparison Table for the 'Overview' tab.
     """
     pattern = r"(#\s*(?:---\s*)?APPROACH\s*\d+:.*?(?:\s*---)?|#\s*---\s*.*?\s*---)\n"
     parts = re.split(pattern, solutions_content, flags=re.IGNORECASE)
@@ -139,19 +140,12 @@ def parse_solutions(solutions_content):
     if len(parts) <= 1:
         return [("Full Solution", solutions_content)]
         
-    approaches = []
-    
-    overview = parts[0].strip()
-    if overview:
-        cleaned_lines = [l for l in overview.split("\n") if not l.strip().startswith("# ==")]
-        cleaned_overview = "\n".join(cleaned_lines).strip()
-        if cleaned_overview:
-            approaches.append(("Overview", cleaned_overview))
-            
+    raw_approaches = []
     for i in range(1, len(parts), 2):
         header = parts[i].replace("#", "").replace("-", "").strip()
         content = parts[i+1].strip()
         
+        # Strip string quotes from secondary language variants if needed
         if "java" in header.lower() or "java" in content.lower():
             if content.startswith("'''") or content.startswith('"""'):
                 content = content[3:]
@@ -160,8 +154,106 @@ def parse_solutions(solutions_content):
             content = content.strip()
             
         if content:
-            approaches.append((header, content))
+            raw_approaches.append((header, content))
             
+    # Extract metadata for Overview Comparison Table
+    metadata_list = []
+    for header, content in raw_approaches:
+        time_comp = "N/A"
+        space_comp = "N/A"
+        
+        # Regex to find time complexity
+        time_match = re.search(r'Time\s+Complexity\s*:\s*([^\n]+)', content, re.IGNORECASE)
+        if time_match:
+            time_comp = time_match.group(1).strip().rstrip('*/').strip()
+            
+        # Regex to find space complexity
+        space_match = re.search(r'Space\s+Complexity\s*:\s*([^\n]+)', content, re.IGNORECASE)
+        if space_match:
+            space_comp = space_match.group(1).strip().rstrip('*/').strip()
+            
+        # Extract description lines (all comment lines at start of content before actual code)
+        desc_lines = []
+        in_docstring = False
+        for line in content.split('\n'):
+            sline = line.strip()
+            if not sline:
+                continue
+            if sline.startswith('"""') or sline.startswith("'''") or sline.startswith('/*') or sline.startswith('/**'):
+                in_docstring = True
+                sline = sline.replace('"""', '').replace("'''", '').replace('/*', '').replace('/**', '').strip()
+            elif in_docstring and (sline.endswith('"""') or sline.endswith("'''") or sline.endswith('*/')):
+                in_docstring = False
+                sline = sline.replace('"""', '').replace("'''", '').replace('*/', '').strip()
+            elif sline.startswith('#'):
+                sline = sline.lstrip('#').strip()
+            elif in_docstring:
+                sline = sline.lstrip('*').strip()
+            else:
+                # Actual code line, stop parsing description
+                break
+                
+            if not sline:
+                continue
+            if re.search(r'(Time|Space)\s+Complexity', sline, re.IGNORECASE):
+                continue
+            if sline.startswith('---') or sline.startswith('==='):
+                continue
+            desc_lines.append(sline)
+            
+        desc = " ".join(desc_lines).strip()
+        if len(desc) > 200:
+            desc = desc[:197] + "..."
+            
+        metadata_list.append((header, {
+            "time": time_comp,
+            "space": space_comp,
+            "description": desc or "No description provided."
+        }))
+        
+    # Build dynamic Overview content
+    overview = parts[0].strip()
+    cleaned_overview = ""
+    has_custom_overview = False
+    
+    if overview:
+        cleaned_lines = [l for l in overview.split("\n") if not l.strip().startswith("# ==")]
+        cleaned_overview = "\n".join(cleaned_lines).strip()
+        
+        # Check if it has actual custom text beyond the default header
+        temp_text = cleaned_overview
+        temp_text = re.sub(r'#+\s*', '', temp_text)
+        temp_text = temp_text.replace('PLURAL SOLUTIONS & COMPLEXITY ANALYSIS', '')
+        temp_text = temp_text.replace('PLURAL SOLUTIONS AND COMPLEXITY ANALYSIS', '')
+        temp_text = temp_text.strip()
+        has_custom_overview = len(temp_text) > 0
+
+    def format_complexity(val):
+        val = val.strip().strip('`').strip('$').strip()
+        if val.lower() == "n/a" or not val:
+            return "`N/A`"
+        return f"`{val}`"
+
+    overview_markdown = ""
+    if has_custom_overview:
+        overview_markdown += cleaned_overview + "\n\n"
+    else:
+        overview_markdown += "# 🎯 Solution Approaches Comparison\n\n"
+        
+    overview_markdown += "Here is a structured comparison of the different solution approaches available for this challenge:\n\n"
+    
+    # Render Comparison Table
+    overview_markdown += "| Approach | Time Complexity | Space Complexity | Key Idea / Summary |\n"
+    overview_markdown += "| :--- | :--- | :--- | :--- |\n"
+    for title, meta in metadata_list:
+        overview_markdown += f"| **{title}** | {format_complexity(meta['time'])} | {format_complexity(meta['space'])} | {meta['description']} |\n"
+        
+    overview_markdown += "\n---\n"
+    overview_markdown += "### 💡 Study Recommendation\n"
+    overview_markdown += "We recommend understanding the brute force approach first before implementing the optimal one. You can practice writing the code in the **Sandbox** tab and run the automated test suite to verify your solution!\n"
+    
+    # Put Overview as the first tab, followed by the actual code approaches
+    approaches = [("Overview", overview_markdown)] + raw_approaches
     return approaches
 
 # ─────────────────────────────────────────────────
